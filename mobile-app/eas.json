@@ -1,0 +1,54 @@
+{
+  "cli": {
+    "version": ">= 10.2.3"
+  },
+  "build": {
+    "development": {
+      "extends": "development",
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleDebug"
+      },
+      "ios": {
+        "buildConfiguration": "Debug",
+        "scheme": "eventhub",
+        "simulator": true
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "http://localhost:8080/api/v1",
+        "EXPO_PUBLIC_API_TIMEOUT": "10000"
+      }
+    },
+    "preview": {
+      "extends": "preview",
+      "distribution": "internal",
+      "android": {
+        "buildType": "aab"
+      },
+      "ios": {
+        "buildConfiguration": "Release",
+        "scheme": "eventhub"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://preview-api.example.com/api/v1",
+        "EXPO_PUBLIC_API_TIMEOUT": "10000"
+      }
+    },
+    "production": {
+      "extends": "production",
+      "android": {
+        "buildType": "aab"
+      },
+      "ios": {
+        "buildConfiguration": "Release",
+        "scheme": "eventhub"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.example.com/api/v1",
+        "EXPO_PUBLIC_API_TIMEOUT": "10000"
+      }
+    }
+  }
+}

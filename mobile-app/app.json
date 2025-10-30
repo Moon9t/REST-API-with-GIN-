@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "EventHub",
+    "slug": "eventhub-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#6200ee"
+    },
+    "updates": {
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.thyrookeventhub.mobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app needs access to the camera to allow users to upload event photos.",
+        "NSPhotoLibraryUsageDescription": "This app needs access to the photo library to allow users to select and upload event images."
+      }
+    },
+    "android": {
+      "minSdkVersion": 31,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#6200ee"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "scheme": "eventhub",
+    "sdkVersion": "52.0.0"
+  }
+}
