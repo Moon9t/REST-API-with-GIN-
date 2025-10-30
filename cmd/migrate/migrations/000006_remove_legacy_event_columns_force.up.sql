@@ -20,8 +20,10 @@ CREATE TABLE IF NOT EXISTS events_tmp (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- Copy existing columns into the new table.
+-- Avoid referencing legacy columns (title, start_time) which may not exist in some DB states.
 INSERT INTO events_tmp (id, user_id, name, description, date, location, created_at, updated_at)
-SELECT id, user_id, COALESCE(name, title), description, COALESCE(date, start_time), COALESCE(location, ''), created_at, updated_at
+SELECT id, user_id, COALESCE(name, ''), description, COALESCE(date, ''), COALESCE(location, ''), created_at, updated_at
 FROM events;
 
 DROP TABLE IF EXISTS events;
