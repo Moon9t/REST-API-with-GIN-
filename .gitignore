@@ -1,4 +1,4 @@
-.env
+.env                  
 *.log
 *.tmp
 *.swp
@@ -13,6 +13,5 @@ Thumbs.db
 *.old
 *.test
 coverage/
-.env.local
-.env.*
+.env.local           
 mobile-app/
