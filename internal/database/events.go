@@ -12,7 +12,7 @@ type EventModel struct {
 
 type Event struct {
 	ID          int    `json:"id"`
-	User_id     int    `json:"user_id" binding:"required"`
+	User_id     int    `json:"user_id"`
 	Name        string `json:"name" binding:"required,min=3,max=100"`
 	Description string `json:"description" binding:"required,min=10,max=500"`
 	Date        string `json:"date" binding:"required" example:"2024-12-31T23:59:59Z"`
@@ -25,7 +25,24 @@ func (m *EventModel) Insert(event *Event) error {
 
 	query := `INSERT INTO events (user_id, name, description, date, location)
 			  VALUES (?, ?, ?, ?, ?)`
-	return m.DB.QueryRowContext(ctx, query, event.User_id, event.Name, event.Description, event.Date, event.Location).Scan(&event.ID)
+
+	res, err := m.DB.ExecContext(ctx, query,
+		event.User_id,
+		event.Name,
+		event.Description,
+		event.Date,
+		event.Location,
+	)
+	if err != nil {
+		return err
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return err
+	}
+	event.ID = int(id)
+	return nil
 }
 
 func (m *EventModel) GetAll() ([]*Event, error) {

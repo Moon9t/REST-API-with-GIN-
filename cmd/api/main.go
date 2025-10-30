@@ -15,6 +15,21 @@ import (
 	"github.com/golang-migrate/migrate/source/file"
 )
 
+// swagger
+// @title REST API in Gin
+// @version 1.0
+// @description This is a REST API server implemented in Go using the Gin framework.
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
+// @tag.name Events
+// @tag.description Operations to manage events (create, list, update, delete)
+// @tag.name Auth
+// @tag.description Authentication endpoints (login, register)
+// @tag.name Attendees
+// @tag.description Manage attendees for events
+
 type application struct {
 	db        *sql.DB
 	port      int
@@ -29,9 +44,6 @@ func main() {
 	}
 	defer db.Close()
 
-	// Run migrations at startup only when needed. By default we check for the
-	// presence of the `schema_migrations` table which the migrate library
-	// creates.
 	if err := runMigrationsIfNeeded(db); err != nil {
 		log.Fatalf("migrations failed: %v", err)
 	}
@@ -50,8 +62,6 @@ func main() {
 	}
 }
 
-// runMigrationsIfNeeded checks whether the migrate metadata table exists and
-// runs migrations from cmd/migrate/migrations when needed.
 func runMigrationsIfNeeded(db *sql.DB) error {
 	force := os.Getenv("FORCE_MIGRATE") == "1"
 

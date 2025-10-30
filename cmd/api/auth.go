@@ -1,10 +1,15 @@
 package main
 
 import (
+	"errors"
+	"log"
 	"net/http"
 	"rest-api-in-gin/internal/database"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v4"
+	sqlite3 "github.com/mattn/go-sqlite3"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -16,6 +21,72 @@ type registerRequest struct {
 	Name     string `json:"name" binding:"required,min=2,max=100"`
 }
 
+type loginRequest struct {
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
+}
+
+type loginResponse struct {
+	Token string `json:"token"`
+}
+
+// @Summary Login user
+// @Description Authenticate a user and return a JWT token
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param credentials body loginRequest true "Login credentials"
+// @Success 200 {object} loginResponse
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Router /api/v1/auth/login [post]
+func (app *application) loginUser(c *gin.Context) {
+	var req loginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
+		return
+	}
+
+	user, err := app.models.Users.GetByEmail(req.Email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve user"})
+		return
+	}
+	if user == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
+		return
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password))
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
+		return
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": user.ID,
+		"exp":     jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+	})
+
+	// Generate JWT token
+	tokenString, err := token.SignedString([]byte(app.jwtSecret))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		return
+	}
+
+	c.JSON(http.StatusOK, loginResponse{Token: tokenString})
+}
+
+// @Summary Register a new user
+// @Description Create a new user account
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param user body registerRequest true "Register payload"
+// @Success 201 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 409 {object} map[string]string
+// @Router /api/v1/auth/register [post]
 func (app *application) createUser(c *gin.Context) {
 	var req registerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -37,6 +108,16 @@ func (app *application) createUser(c *gin.Context) {
 
 	err = app.models.Users.Insert(user)
 	if err != nil {
+
+		var sqlErr sqlite3.Error
+		if errors.As(err, &sqlErr) {
+			if sqlErr.Code == sqlite3.ErrConstraint || sqlErr.ExtendedCode == sqlite3.ErrConstraintUnique {
+				log.Printf("createUser: duplicate email: %v", err)
+				c.JSON(http.StatusConflict, gin.H{"error": "email already registered"})
+				return
+			}
+		}
+		log.Printf("createUser: db error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
 		return
 	}

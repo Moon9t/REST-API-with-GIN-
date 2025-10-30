@@ -1,0 +1,86 @@
+# REST API curl commands (categorized)
+# Base URL: http://localhost:8080
+# API base path: /api/v1
+# Usage: copy-paste commands. Replace IDs where indicated.
+
+====================
+Common variables
+====================
+# (optional) set these in your shell before running the snippets below
+# You can put BASE_URL in a `.env` file at the project root. Example `.env` content:
+#
+#   BASE_URL=http://localhost:8080
+#
+# To load `.env` into your shell for these snippets:
+#   source .env
+# or (safer in scripts):
+#   if [ -f .env ]; then . .env; fi
+
+# Default to localhost if BASE_URL isn't set
+BASE_URL=${BASE_URL:-http://localhost:8080}
+API_BASE="$BASE_URL/api/v1"
+
+====================
+General Connectivity
+====================
+# Check server root (should return 404 or default response)
+curl -i "$BASE_URL/"
+
+# Health check (if implemented)
+curl -i "$BASE_URL/healthz"
+
+====================
+User Endpoints
+====================
+# Create a user
+curl -i -X POST "$API_BASE/users" \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"alice@example.com","name":"Alice","password":"secret123","confirm":"secret123"}'
+
+# Notes: currently only user creation exists; add other user endpoints here if added.
+
+====================
+Event Endpoints
+====================
+# Create an event (fields match application model: user_id, name, description, date, location)
+# Recommended: use the variable form if you set BASE_URL (see above). If you get
+# "URL rejected: No host part in the URL" it means the variable is empty in your
+# shell (BASE_URL not set or not exported). In that case use the full URL below.
+
+# Variable-driven (loads BASE_URL or defaults to http://localhost:8080):
+curl -i -X POST "$API_BASE/events" \
+  -H 'Content-Type: application/json' \
+  -d '{"user_id":1,"name":"End of Year Party","description":"Company year-end celebration","date":"2025-12-31T20:00:00Z","location":"Main Hall"}'
+
+# Full-URL alternative (always works):
+curl -i -X POST "http://localhost:8080/api/v1/events" \
+  -H 'Content-Type: application/json' \
+  -d '{"user_id":1,"name":"End of Year Party","description":"Company year-end celebration","date":"2025-12-31T20:00:00Z","location":"Main Hall"}'
+
+# List all events
+curl -i "$API_BASE/events"
+
+# Get a single event (replace 1 with the actual id returned on create)
+curl -i "$API_BASE/events/1"
+
+# Update an event (replace 1 with actual id)
+curl -i -X PUT "$API_BASE/events/1" \
+  -H 'Content-Type: application/json' \
+  -d '{"user_id":1,"name":"Updated Party","description":"Updated description","date":"2025-12-31T21:00:00Z","location":"New Venue"}'
+
+# Delete an event (replace 1 with actual id)
+curl -i -X DELETE "$API_BASE/events/1"
+
+====================
+Other
+====================
+# Run migrations manually (CLI)
+go run ./cmd/migrate/main.go up
+
+# Force server to run migrations on startup (useful to reapply or ensure latest migrations)
+# FORCE_MIGRATE=1 ./tmp/api
+
+# Pretty-print JSON responses (requires jq)
+curl -s "$API_BASE/events" | jq
+
+# End of categorized curl commands
