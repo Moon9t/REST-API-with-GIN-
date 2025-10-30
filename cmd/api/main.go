@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"rest-api-in-gin/internal/database"
+	"rest-api-in-gin/internal/env"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -12,6 +13,7 @@ type application struct {
 	db        *sql.DB
 	port      int
 	jwtSecret string
+	models    database.Models
 }
 
 func main() {
@@ -24,8 +26,8 @@ func main() {
 	models := database.NewModels(db)
 
 	app := &application{
-		port:      env.getEnvInt("PORT", 8080),
-		jwtSecret: env.getEnvString("JWT_Secret", "some-very-secret-secret"),
+		port:      env.GetEnvInt("PORT", 8080),
+		jwtSecret: env.GetEnvString("JWT_Secret", "some-very-secret-secret"),
 		models:    models,
 	}
 
