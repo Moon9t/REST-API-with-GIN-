@@ -16,3 +16,17 @@ coverage/
 .env.local
 .env.*
 mobile-app/
+
+# Untrack frontend source files and lockfiles (kept locally only)
+*.ts
+*.tsx
+*.js
+*.jsx
+*.json
+package-lock.json
+yarn.lock
+*.map
+
+# Database file(s) - keep local only
+data.db
+*.db
