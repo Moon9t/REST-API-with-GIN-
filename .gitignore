@@ -13,6 +13,6 @@ Thumbs.db
 *.old
 *.test
 coverage/
-.env.local           # per-machine env
-.env.*               # other env variants
+.env.local         
+.env.*               
 # Note: keep project subfolders tracked (e.g. mobile-app/) unless you intentionally want to ignore them
