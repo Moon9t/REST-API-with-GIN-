@@ -1,4 +1,4 @@
-.env
+.env                  # local environment variables (do NOT commit)
 *.log
 *.tmp
 *.swp
@@ -11,9 +11,8 @@ Thumbs.db
 .idea/
 *.bak
 *.old
-.env
 *.test
 coverage/
-.env.local
-.env.*
-mobile-app/
+.env.local           # per-machine env
+.env.*               # other env variants
+# Note: keep project subfolders tracked (e.g. mobile-app/) unless you intentionally want to ignore them
