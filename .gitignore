@@ -11,6 +11,7 @@ Thumbs.db
 .idea/
 *.bak
 *.old
+.env
 *.test
 coverage/
 .env.local
