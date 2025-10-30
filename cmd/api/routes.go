@@ -20,7 +20,7 @@ func (app *application) routes() *gin.Engine {
 		public.GET("/events", app.getAllEvets)
 		public.GET("/events/:id", app.getEvent)
 
-	public.POST("/auth/register", app.createUser)
+		public.POST("/auth/register", app.createUser)
 		public.POST("/auth/login", app.loginUser)
 	}
 

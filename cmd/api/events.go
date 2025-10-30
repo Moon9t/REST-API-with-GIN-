@@ -411,5 +411,3 @@ func (app *application) addEventAttendee(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"message": "Attendee added successfully", "attendee": userToAdd})
 
 }
-
-
