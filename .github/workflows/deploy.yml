@@ -125,9 +125,24 @@ jobs:
       - name: Configure SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
+
+          # Write SSH key preserving newlines and avoid issues with quoting
+          printf '%s\n' "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+          # Validate the private key format early to give a clearer error than libcrypto
+          if ! ssh-keygen -lf ~/.ssh/deploy_key >/dev/null 2>&1; then
+            echo "ERROR: SSH private key is invalid or in an unsupported format."
+            echo "Check the EC2_SSH_KEY repository secret and ensure the private key is pasted exactly (no surrounding quotes, correct newlines)." >&2
+            echo "Listing ~/.ssh for debugging:" >&2
+            ls -la ~/.ssh >&2 || true
+            echo "First 200 bytes of the provided key file (for debugging, do NOT share publicly):" >&2
+            head -c 200 ~/.ssh/deploy_key >&2 || true
+            exit 1
+          fi
+
+          # Add remote host to known_hosts to avoid interactive prompt
+          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Deploy to EC2
         env:
