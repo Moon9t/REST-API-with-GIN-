@@ -11,6 +11,7 @@ export const MyEvents: React.FC = () => {
   const [organizingEvents, setOrganizingEvents] = useState<Event[]>([]);
   const [attendingEvents, setAttendingEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [offlineFallback, setOfflineFallback] = useState(false);
 
   useEffect(() => {
     loadEvents();
@@ -25,9 +26,35 @@ export const MyEvents: React.FC = () => {
       const organizing = allEvents.data.filter((event: Event) => event.user_id === user?.id);
       setOrganizingEvents(organizing);
       
-      // For attending events, we'd need a proper API endpoint
-      // For now, showing empty state
-      setAttendingEvents([]);
+      // Try to load attending events from backend; if that fails, fall back to cached or mock data.
+      try {
+        const attending = await eventsAPI.getAttending(user?.id);
+        setAttendingEvents(attending.data);
+        // cache for offline fallback
+        try { localStorage.setItem('attendingEvents', JSON.stringify(attending.data)); } catch (_) {}
+        setOfflineFallback(false);
+      } catch (err) {
+        console.warn('Attending events fetch failed, using fallback:', err);
+        // try cached
+        try {
+          const cached = localStorage.getItem('attendingEvents');
+          if (cached) {
+            setAttendingEvents(JSON.parse(cached));
+            setOfflineFallback(true);
+          } else {
+            // last resort: small local mock so UI isn't empty
+            const fallbackMock: Event[] = [
+              { id: 9991, user_id: 2, name: 'Offline Sample 1', description: 'Mock attending event', date: new Date().toISOString(), location: 'Offline' },
+            ];
+            setAttendingEvents(fallbackMock);
+            setOfflineFallback(true);
+          }
+        } catch (e) {
+          console.error('Failed to read cached attending events', e);
+          setAttendingEvents([]);
+          setOfflineFallback(true);
+        }
+      }
     } catch (error) {
       console.error('Failed to load events', error);
     } finally {
@@ -56,6 +83,19 @@ export const MyEvents: React.FC = () => {
           <h1 className="text-4xl font-black text-white mb-3">My Events</h1>
           <p className="text-gray-400 text-lg">Manage your events and registrations</p>
         </div>
+
+        {offlineFallback && (
+          <div className="mb-6 p-4 rounded-lg bg-yellow-600/10 border border-yellow-500 text-yellow-200">
+            You're viewing cached/offline data because the server couldn't be reached.
+            <button
+              onClick={() => window.location.reload()}
+              className="ml-4 px-3 py-1 bg-yellow-500 text-black rounded-md font-semibold"
+            >
+              Retry
+            </button>
+            <Link to="/my-events-offline" className="ml-4 underline text-yellow-200">Open offline demo</Link>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="glass rounded-2xl p-2 inline-flex mb-8">
