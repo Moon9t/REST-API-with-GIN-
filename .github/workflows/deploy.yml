@@ -192,13 +192,14 @@ jobs:
             exit 1
           fi
 
-          # Ensure /tmp exists on the remote host and is writable by the user
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} 'mkdir -p /tmp && chmod 1777 /tmp' || true
+          # Create a per-deploy directory in the remote user's home (avoids touching global /tmp)
+          REMOTE_DEPLOY_DIR="~/deploy"
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} "mkdir -p ${REMOTE_DEPLOY_DIR} && chmod 700 ${REMOTE_DEPLOY_DIR}" || true
 
-          # Upload deployment package
-          scp -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key eventhub-deployment.tar.gz ${EC2_USER}@${EC2_HOST}:/tmp/
-          scp -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key scripts/deploy.sh ${EC2_USER}@${EC2_HOST}:/tmp/
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key ${EC2_USER}@${EC2_HOST} 'bash /tmp/deploy.sh'
+          # Upload deployment package into the user's deploy directory and run it there
+          scp -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -i ~/.ssh/deploy_key eventhub-deployment.tar.gz ${EC2_USER}@${EC2_HOST}:${REMOTE_DEPLOY_DIR}/
+          scp -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -i ~/.ssh/deploy_key scripts/deploy.sh ${EC2_USER}@${EC2_HOST}:${REMOTE_DEPLOY_DIR}/deploy.sh
+          ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -i ~/.ssh/deploy_key ${EC2_USER}@${EC2_HOST} "bash ${REMOTE_DEPLOY_DIR}/deploy.sh"
 
       - name: Verify deployment
         env:

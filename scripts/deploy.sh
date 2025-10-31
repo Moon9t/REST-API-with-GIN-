@@ -11,6 +11,7 @@ ENV_FILE="$APP_DIR/.env"
 SYSTEMD_SERVICE="eventhub.service"
 DEPLOYMENT_ARCHIVE="/tmp/eventhub-deployment.tar.gz"
 BACKUP_PATH="/opt/eventhub-backups"
+UPLOAD_DIRS=("/tmp" "~/deploy" "/home/$USER/deploy")
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "🚀 EventHub Deployment Script"
@@ -67,13 +68,22 @@ echo "[deploy] Updating environment file..."
 if [ -f "$APP_DIR/.env" ]; then
     sudo chmod 600 "$ENV_FILE"
 else
-    # Try to copy .env from deployment archive if present
-    if [ -f "/tmp/.env" ]; then
-        cp /tmp/.env "$APP_DIR/.env"
-        sudo chmod 600 "$APP_DIR/.env"
-        echo "[deploy] .env file copied from /tmp/.env."
-    else
-        echo "[deploy] WARNING: .env file not found in app directory or /tmp/.env." >&2
+    # Try to copy .env from a few likely upload locations (CI may upload to ~/deploy or /tmp)
+    COPIED_ENV=0
+    for d in "${UPLOAD_DIRS[@]}"; do
+        # expand ~ if present
+        eval expanded="$d"
+        if [ -f "$expanded/.env" ]; then
+            cp "$expanded/.env" "$APP_DIR/.env"
+            sudo chmod 600 "$APP_DIR/.env"
+            echo "[deploy] .env file copied from $expanded/.env."
+            COPIED_ENV=1
+            break
+        fi
+    done
+
+    if [ $COPIED_ENV -eq 0 ]; then
+        echo "[deploy] WARNING: .env file not found in app directory or upload locations." >&2
     fi
 fi
 
@@ -113,7 +123,9 @@ fi
 # --- CLEANUP ---
 echo "🧹 Cleaning up..."
 rm -f "$DEPLOYMENT_ARCHIVE"
-rm -f /tmp/deploy.sh
+rm -f /tmp/deploy.sh || true
+rm -f ~/deploy/deploy.sh || true
+rm -f "/home/$USER/deploy/deploy.sh" || true
 
 # --- KEEP ONLY LAST 5 BACKUPS ---
 if [ -d "$BACKUP_PATH" ]; then
