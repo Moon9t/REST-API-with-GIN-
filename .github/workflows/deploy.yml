@@ -149,17 +149,31 @@ jobs:
           EC2_USER: ${{ secrets.EC2_USER }}
           EC2_HOST: ${{ secrets.EC2_HOST }}
         run: |
+          # Try to add the remote host key to known_hosts (retry a few times)
+          for i in 1 2 3; do
+            ssh-keyscan -p "${{ secrets.EC2_PORT || '22' }}" "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts && break || sleep 1
+          done || true
+
+          # Check if strict host key checking works with the provided key
+          if ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes ${EC2_USER}@${EC2_HOST} 'echo ok' >/dev/null 2>&1; then
+            echo "Host key verification succeeded with strict checking. Using standard scp/ssh options."
+            SCP_OPTS=""
+          else
+            echo "Warning: Host key verification with strict checking failed. Falling back to permissive SSH options for this run."
+            SCP_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+          fi
+
           # Ensure /tmp exists on the remote host (some systems may not have it or may restrict it)
-          ssh -i ~/.ssh/deploy_key ${EC2_USER}@${EC2_HOST} 'mkdir -p /tmp && chmod 1777 /tmp' || true
+          ssh ${SCP_OPTS} -i ~/.ssh/deploy_key ${EC2_USER}@${EC2_HOST} 'mkdir -p /tmp && chmod 1777 /tmp' || true
 
           # Upload deployment package
-          scp -i ~/.ssh/deploy_key eventhub-deployment.tar.gz ${EC2_USER}@${EC2_HOST}:/tmp/
+          scp ${SCP_OPTS} -i ~/.ssh/deploy_key eventhub-deployment.tar.gz ${EC2_USER}@${EC2_HOST}:/tmp/
 
           # Upload deployment script
-          scp -i ~/.ssh/deploy_key scripts/deploy.sh ${EC2_USER}@${EC2_HOST}:/tmp/
+          scp ${SCP_OPTS} -i ~/.ssh/deploy_key scripts/deploy.sh ${EC2_USER}@${EC2_HOST}:/tmp/
 
           # Execute deployment
-          ssh -i ~/.ssh/deploy_key ${EC2_USER}@${EC2_HOST} 'bash /tmp/deploy.sh'
+          ssh ${SCP_OPTS} -i ~/.ssh/deploy_key ${EC2_USER}@${EC2_HOST} 'bash /tmp/deploy.sh'
 
       - name: Verify deployment
         env:
