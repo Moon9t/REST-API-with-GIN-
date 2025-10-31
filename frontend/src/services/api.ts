@@ -122,6 +122,17 @@ export const eventsAPI = {
     const response = await api.delete(`/events/${id}`);
     return response.data;
   },
+  
+  // Get events the user is attending. Returns an object with `data: Event[]` so callers
+  // can use the same shape as `getAll` (i.e. `attending.data`). If userId is falsy,
+  // return an empty list.
+  getAttending: async (userId?: number | null) => {
+    if (!userId) {
+      return { data: [] as Event[] };
+    }
+    const response = await api.get<Event[]>(`/attendees/${userId}/events`);
+    return { data: response.data };
+  },
 };
 
 // Attendees API
@@ -145,6 +156,8 @@ export const attendeesAPI = {
     const response = await api.get<Event[]>(`/attendees/${userId}/events`);
     return response.data;
   },
+
+  // legacy: use eventsAPI.getAttending which returns { data: Event[] }
 };
 
 export default api;
