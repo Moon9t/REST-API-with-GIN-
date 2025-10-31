@@ -6,6 +6,7 @@ import { Register } from './pages/Register';
 import { Events } from './pages/Events';
 import { EventDetail } from './pages/EventDetail';
 import { MyEvents } from './pages/MyEvents';
+import { MyEventsOffline } from './pages/MyEventsOffline';
 import { CreateEvent } from './pages/CreateEvent';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -33,6 +34,7 @@ function AppRoutes() {
       <Route path="/events/new" element={<ProtectedRoute><CreateEvent /></ProtectedRoute>} />
       <Route path="/events/:id" element={<ProtectedRoute><EventDetail /></ProtectedRoute>} />
       <Route path="/my-events" element={<ProtectedRoute><MyEvents /></ProtectedRoute>} />
+  <Route path="/my-events-offline" element={<MyEventsOffline />} />
       <Route path="/" element={<Navigate to="/events" />} />
     </Routes>
   );
