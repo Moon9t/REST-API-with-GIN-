@@ -8,11 +8,11 @@ import (
 	"rest-api-in-gin/internal/env"
 
 	_ "github.com/joho/godotenv/autoload"
-	"github.com/mattn/go-sqlite3"
+	_ "github.com/mattn/go-sqlite3"
 
-	"github.com/golang-migrate/migrate"
-	"github.com/golang-migrate/migrate/database/sqlite3"
-	"github.com/golang-migrate/migrate/source/file"
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/sqlite3"
+	"github.com/golang-migrate/migrate/v4/source/file"
 )
 
 // swagger

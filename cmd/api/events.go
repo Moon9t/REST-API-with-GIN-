@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"log"
 	"net/http"
 	"rest-api-in-gin/internal/database"
@@ -9,8 +8,6 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-
-	sqlite3 "github.com/mattn/go-sqlite3"
 )
 
 // @Summary Create an event
@@ -46,15 +43,11 @@ func (app *application) createEvent(c *gin.Context) {
 
 	err = app.models.Events.Insert(&event)
 	if err != nil {
-		// Log the error server-side for debugging
 		log.Printf("createEvent: db insert error: %v", err)
 
-		var sqlErr sqlite3.Error
-		if errors.As(err, &sqlErr) {
-			if sqlErr.Code == sqlite3.ErrConstraint || sqlErr.ExtendedCode == sqlite3.ErrConstraintUnique {
-				c.JSON(http.StatusConflict, gin.H{"error": "Conflict: constraint violation"})
-				return
-			}
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") || strings.Contains(err.Error(), "constraint failed") {
+			c.JSON(http.StatusConflict, gin.H{"error": "Conflict: constraint violation"})
+			return
 		}
 
 		if strings.Contains(strings.ToLower(err.Error()), "foreign key") {

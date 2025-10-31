@@ -1,15 +1,14 @@
 package main
 
 import (
-	"errors"
 	"log"
 	"net/http"
 	"rest-api-in-gin/internal/database"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
-	sqlite3 "github.com/mattn/go-sqlite3"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -108,14 +107,10 @@ func (app *application) createUser(c *gin.Context) {
 
 	err = app.models.Users.Insert(user)
 	if err != nil {
-
-		var sqlErr sqlite3.Error
-		if errors.As(err, &sqlErr) {
-			if sqlErr.Code == sqlite3.ErrConstraint || sqlErr.ExtendedCode == sqlite3.ErrConstraintUnique {
-				log.Printf("createUser: duplicate email: %v", err)
-				c.JSON(http.StatusConflict, gin.H{"error": "email already registered"})
-				return
-			}
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") || strings.Contains(err.Error(), "constraint failed") {
+			log.Printf("createUser: duplicate email: %v", err)
+			c.JSON(http.StatusConflict, gin.H{"error": "email already registered"})
+			return
 		}
 		log.Printf("createUser: db error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
