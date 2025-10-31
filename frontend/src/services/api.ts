@@ -76,6 +76,101 @@ export interface PaginatedResponse<T> {
   };
 }
 
+// --- Offline queue for attendee add/remove actions ---
+const PENDING_ATTENDEE_KEY = 'pendingAttendeeActions_v1';
+
+type PendingAttendeeAction = {
+  id: string;
+  action: 'add' | 'remove';
+  eventId: number;
+  userId: number;
+  createdAt: number;
+};
+
+function loadPendingAttendeeActions(): PendingAttendeeAction[] {
+  try {
+    const raw = localStorage.getItem(PENDING_ATTENDEE_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as PendingAttendeeAction[];
+  } catch (err) {
+    console.warn('Failed to parse pending attendee actions from localStorage', err);
+    return [];
+  }
+}
+
+function savePendingAttendeeActions(list: PendingAttendeeAction[]) {
+  try {
+    localStorage.setItem(PENDING_ATTENDEE_KEY, JSON.stringify(list));
+  } catch (err) {
+    console.warn('Failed to save pending attendee actions', err);
+  }
+}
+
+function queueAttendeeAction(action: { action: 'add' | 'remove'; eventId: number; userId: number }) {
+  const list = loadPendingAttendeeActions();
+  const entry: PendingAttendeeAction = {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    action: action.action,
+    eventId: action.eventId,
+    userId: action.userId,
+    createdAt: Date.now(),
+  };
+  list.push(entry);
+  savePendingAttendeeActions(list);
+  console.info('Queued attendee action', entry);
+}
+
+async function processPendingAttendeeActions() {
+  const list = loadPendingAttendeeActions();
+  if (!list.length) return;
+  console.info('Processing pending attendee actions', list.length);
+
+  const remaining: PendingAttendeeAction[] = [];
+
+  for (const item of list) {
+    try {
+      if (item.action === 'add') {
+        await api.post(`/events/${item.eventId}/attendees?user_id=${item.userId}`);
+      } else {
+        await api.delete(`/events/${item.eventId}/attendees/${item.userId}`);
+      }
+      console.info('Synced attendee action', item.id, item.action, item.eventId, item.userId);
+    } catch (err: any) {
+      // If network error, stop and leave remaining items queued.
+      if (!navigator.onLine || !err.response) {
+        console.warn('Network error while syncing attendee actions, will retry later', err?.message || err);
+        // push current and all remaining back into queue
+        const index = list.findIndex((l) => l.id === item.id);
+        const rest = list.slice(index);
+        savePendingAttendeeActions(rest);
+        return;
+      }
+      // For server-side errors (4xx/5xx), skip this action (can't do more)
+      console.warn('Server error syncing attendee action, dropping action', item, err?.response?.status);
+    }
+  }
+
+  // All processed successfully
+  savePendingAttendeeActions(remaining);
+}
+
+// Wire up online event to attempt sync when connection is restored
+try {
+  if (typeof window !== 'undefined') {
+    window.addEventListener('online', () => {
+      console.info('Browser came online — attempting to sync queued attendee actions');
+      processPendingAttendeeActions().catch((e) => console.error('Error processing pending attendee actions', e));
+    });
+
+    // Try an initial sync if online
+    if (navigator.onLine) {
+      processPendingAttendeeActions().catch((e) => console.debug('Initial pending attendee sync failed', e));
+    }
+  }
+} catch (err) {
+  // ignore in non-browser environments
+}
+
 // Auth API
 export const authAPI = {
   register: async (email: string, password: string, confirm: string, name: string) => {
@@ -142,14 +237,33 @@ export const attendeesAPI = {
     return response.data;
   },
 
+  // Add / Remove attendee with offline queueing and sync support.
   addAttendee: async (eventId: number, userId: number) => {
-    const response = await api.post(`/events/${eventId}/attendees?user_id=${userId}`);
-    return response.data;
+    try {
+      const response = await api.post(`/events/${eventId}/attendees?user_id=${userId}`);
+      return { queued: false, data: response.data };
+    } catch (err: any) {
+      // Network error or server unreachable -> queue the action for later sync
+      if (!navigator.onLine || !err.response) {
+        queueAttendeeAction({ action: 'add', eventId, userId });
+        return { queued: true };
+      }
+      // Other errors (validation etc) -> rethrow
+      throw err;
+    }
   },
 
   removeAttendee: async (eventId: number, userId: number) => {
-    const response = await api.delete(`/events/${eventId}/attendees/${userId}`);
-    return response.data;
+    try {
+      const response = await api.delete(`/events/${eventId}/attendees/${userId}`);
+      return { queued: false, data: response.data };
+    } catch (err: any) {
+      if (!navigator.onLine || !err.response) {
+        queueAttendeeAction({ action: 'remove', eventId, userId });
+        return { queued: true };
+      }
+      throw err;
+    }
   },
 
   getUserEvents: async (userId: number) => {

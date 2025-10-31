@@ -82,8 +82,18 @@ export const EventDetail: React.FC = () => {
     if (!id || !event || !user) return;
     
     try {
-      await attendeesAPI.addAttendee(event.id, user.id);
-      await loadEventData();
+      const res: any = await attendeesAPI.addAttendee(event.id, user.id);
+      if (res?.queued) {
+        // Optimistically update attendees locally while queued
+        setAttendees((prev) => {
+          if (prev.some((a) => a.id === user.id)) return prev;
+          return [...prev, user];
+        });
+        // Inform user the action was queued
+        alert('You are offline — your request has been queued and will sync when online.');
+      } else {
+        await loadEventData();
+      }
     } catch (err: any) {
       alert(err.response?.data?.error || 'Failed to join event');
     }
@@ -93,8 +103,14 @@ export const EventDetail: React.FC = () => {
     if (!id || !event || !user) return;
     
     try {
-      await attendeesAPI.removeAttendee(event.id, user.id);
-      await loadEventData();
+      const res: any = await attendeesAPI.removeAttendee(event.id, user.id);
+      if (res?.queued) {
+        // Optimistically remove locally while queued
+        setAttendees((prev) => prev.filter((a) => a.id !== user.id));
+        alert('You are offline — your request to leave has been queued and will sync when online.');
+      } else {
+        await loadEventData();
+      }
     } catch (err: any) {
       alert(err.response?.data?.error || 'Failed to leave event');
     }
