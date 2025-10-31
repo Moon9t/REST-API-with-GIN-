@@ -122,58 +122,83 @@ jobs:
           tar -czf ../eventhub-deployment.tar.gz *
           cd ..
 
-      - name: Configure SSH
+      - name: Configure and validate SSH key
+        env:
+          EC2_PORT: ${{ secrets.EC2_PORT }}
         run: |
+          set -euo pipefail
           mkdir -p ~/.ssh
 
-          # Write SSH key preserving newlines and avoid issues with quoting
-          printf '%s\n' "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
+          # Write the EC2_SSH_KEY secret to a temp file first, normalize CRLFs
+          printf '%s' "${{ secrets.EC2_SSH_KEY }}" | tr -d '\r' > /tmp/ec2_key_input || true
+
+          # Try to treat the secret as base64. If decoding yields a file that
+          # contains a private key marker, use the decoded content. Otherwise
+          # fall back to the raw content (handles both raw and base64 secrets).
+          if base64 --decode /tmp/ec2_key_input >/tmp/ec2_key_decoded 2>/dev/null; then
+            if grep -qE '-----BEGIN .*PRIVATE KEY-----' /tmp/ec2_key_decoded; then
+              mv /tmp/ec2_key_decoded ~/.ssh/deploy_key
+            else
+              mv /tmp/ec2_key_input ~/.ssh/deploy_key
+              rm -f /tmp/ec2_key_decoded || true
+            fi
+          else
+            mv /tmp/ec2_key_input ~/.ssh/deploy_key
+          fi
+
           chmod 600 ~/.ssh/deploy_key
 
-          # Validate the private key format early to give a clearer error than libcrypto
+          # Quick validation: check the key file looks like an SSH private key
           if ! ssh-keygen -lf ~/.ssh/deploy_key >/dev/null 2>&1; then
-            echo "ERROR: SSH private key is invalid or in an unsupported format."
-            echo "Check the EC2_SSH_KEY repository secret and ensure the private key is pasted exactly (no surrounding quotes, correct newlines)." >&2
+            echo "ERROR: SSH private key is invalid or unsupported by ssh-keygen." >&2
+            echo "If you uploaded the key via GitHub secrets UI, ensure you pasted the private key exactly (no surrounding quotes)" >&2
+            echo "Or set EC2_SSH_KEY to the Base64 of the key (base64 -w0 < id_rsa) and the workflow will decode it." >&2
             echo "Listing ~/.ssh for debugging:" >&2
             ls -la ~/.ssh >&2 || true
-            echo "First 200 bytes of the provided key file (for debugging, do NOT share publicly):" >&2
-            head -c 200 ~/.ssh/deploy_key >&2 || true
+            echo "First 400 bytes of the provided key file (for debugging, do NOT share publicly):" >&2
+            head -c 400 ~/.ssh/deploy_key >&2 || true
             exit 1
           fi
 
-          # Add remote host to known_hosts to avoid interactive prompt
-          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+          # Print the key fingerprint for debugging (safe to show in logs)
+          echo "CI: decoded key fingerprint:" && ssh-keygen -lf ~/.ssh/deploy_key || true
 
-      - name: Deploy to EC2
+          # Add remote host to known_hosts (non-fatal if it fails)
+          PORT="${EC2_PORT:-}"
+          if [ -n "${{ secrets.EC2_HOST }}" ]; then
+            ssh-keyscan -p "${PORT:-22}" -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
+          fi
+
+      - name: Deploy to EC2 (test auth first, then upload)
         env:
           EC2_USER: ${{ secrets.EC2_USER }}
           EC2_HOST: ${{ secrets.EC2_HOST }}
         run: |
-          # Try to add the remote host key to known_hosts (retry a few times)
-          for i in 1 2 3; do
-            ssh-keyscan -p "${{ secrets.EC2_PORT || '22' }}" "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts && break || sleep 1
-          done || true
+          set -euo pipefail
 
-          # Check if strict host key checking works with the provided key
-          if ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes ${EC2_USER}@${EC2_HOST} 'echo ok' >/dev/null 2>&1; then
-            echo "Host key verification succeeded with strict checking. Using standard scp/ssh options."
-            SCP_OPTS=""
-          else
-            echo "Warning: Host key verification with strict checking failed. Falling back to permissive SSH options for this run."
-            SCP_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+          if [ -z "${EC2_USER:-}" ] || [ -z "${EC2_HOST:-}" ]; then
+            echo "ERROR: EC2_USER and EC2_HOST must be set as repository secrets." >&2
+            exit 1
           fi
 
-          # Ensure /tmp exists on the remote host (some systems may not have it or may restrict it)
-          ssh ${SCP_OPTS} -i ~/.ssh/deploy_key ${EC2_USER}@${EC2_HOST} 'mkdir -p /tmp && chmod 1777 /tmp' || true
+          # Quick authentication test (do not require known_hosts to match)
+          if ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=10 ${EC2_USER}@${EC2_HOST} 'echo ok' >/dev/null 2>&1; then
+            echo "SSH authentication test succeeded. Proceeding with deploy."
+          else
+            echo "ERROR: SSH authentication failed using the provided key." >&2
+            echo "Please verify the EC2_SSH_KEY secret: paste the private key exactly, no surrounding quotes, and preserve newlines." >&2
+            echo "If your UI strips newlines, set the secret to the base64 of the private key and re-run (workflow will decode it)." >&2
+            echo "You can produce a base64 value locally with: base64 -w0 < ~/.ssh/id_rsa" >&2
+            exit 1
+          fi
+
+          # Ensure /tmp exists on the remote host and is writable by the user
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} 'mkdir -p /tmp && chmod 1777 /tmp' || true
 
           # Upload deployment package
-          scp ${SCP_OPTS} -i ~/.ssh/deploy_key eventhub-deployment.tar.gz ${EC2_USER}@${EC2_HOST}:/tmp/
-
-          # Upload deployment script
-          scp ${SCP_OPTS} -i ~/.ssh/deploy_key scripts/deploy.sh ${EC2_USER}@${EC2_HOST}:/tmp/
-
-          # Execute deployment
-          ssh ${SCP_OPTS} -i ~/.ssh/deploy_key ${EC2_USER}@${EC2_HOST} 'bash /tmp/deploy.sh'
+          scp -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key eventhub-deployment.tar.gz ${EC2_USER}@${EC2_HOST}:/tmp/
+          scp -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key scripts/deploy.sh ${EC2_USER}@${EC2_HOST}:/tmp/
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key ${EC2_USER}@${EC2_HOST} 'bash /tmp/deploy.sh'
 
       - name: Verify deployment
         env:
