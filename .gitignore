@@ -58,3 +58,10 @@ tmp/
 
 # Keep package lockfiles and source files tracked
 # (Do NOT ignore .ts/.js/.json source files in repo root)
+
+# Ignore markdown files except the root README.md which should remain tracked
+*.md
+!README.md
+
+# Ignore shell scripts (kept locally only)
+*.sh
