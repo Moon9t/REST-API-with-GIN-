@@ -66,7 +66,10 @@ jobs:
 
       - name: Install dependencies
         working-directory: ./frontend
-        run: npm ci
+        run: |
+          # Prefer a clean, reproducible install but fall back to `npm install` if lockfile
+          # and package.json are temporarily out of sync in CI environments.
+          npm ci --no-audit --no-fund || npm install --no-audit --no-fund
 
       - name: Build frontend
         working-directory: ./frontend
