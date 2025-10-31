@@ -37,6 +37,7 @@ sudo chown "$USER:$USER" "$APP_DIR" "$FRONTEND_DIR" "$MIGRATIONS_DIR"
 echo "📦 Extracting deployment package..."
 sudo tar -xzf "$DEPLOYMENT_ARCHIVE" -C "$APP_DIR"
 
+
 # --- BACKEND DEPLOYMENT ---
 echo "[deploy] Deploying backend..."
 if [ -f "$BACKEND_BINARY" ]; then
@@ -45,6 +46,10 @@ else
     echo "[deploy] ERROR: Backend binary not found at $BACKEND_BINARY" >&2
     exit 1
 fi
+
+# --- FREE PORT 8080 BEFORE STARTING SERVICE ---
+echo "[deploy] Freeing port 8080 if in use..."
+sudo fuser -k 8080/tcp || true
 
 # --- FRONTEND DEPLOYMENT ---
 echo "[deploy] Deploying frontend..."
@@ -56,12 +61,20 @@ else
     echo "[deploy] WARNING: Frontend build directory not found." >&2
 fi
 
+
 # --- ENVIRONMENT FILE ---
 echo "[deploy] Updating environment file..."
 if [ -f "$APP_DIR/.env" ]; then
     sudo chmod 600 "$ENV_FILE"
 else
-    echo "[deploy] WARNING: .env file not found in app directory." >&2
+    # Try to copy .env from deployment archive if present
+    if [ -f "/tmp/.env" ]; then
+        cp /tmp/.env "$APP_DIR/.env"
+        sudo chmod 600 "$APP_DIR/.env"
+        echo "[deploy] .env file copied from /tmp/.env."
+    else
+        echo "[deploy] WARNING: .env file not found in app directory or /tmp/.env." >&2
+    fi
 fi
 
 # --- RUN DATABASE MIGRATIONS ---
