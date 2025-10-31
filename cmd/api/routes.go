@@ -36,9 +36,16 @@ func (app *application) routes() *gin.Engine {
 		auth.DELETE("/events/:id/attendees/:userId", app.deleteAttendeeFromEvent)
 		auth.GET("/attendees/:id/events", app.getUserEvents)
 	}
-	g.GET("/swagger/*any", func(ctx *gin.Context) {
-		if ctx.Request.RequestURI == "/swagger/" {
-			ctx.Request.RequestURI = "/swagger/index.html"
+	// Serve the generated swagger JSON so the UI can load it
+	g.StaticFile("/swagger/doc.json", "cmd/api/docs/swagger.json")
+
+	// Serve EventHub static UI
+	g.Static("/eventhub", "web/eventhub")
+
+	// Serve the Swagger UI under /docs so it doesn't conflict with /swagger/doc.json
+	g.GET("/docs/*any", func(ctx *gin.Context) {
+		if ctx.Request.RequestURI == "/docs/" {
+			ctx.Request.RequestURI = "/docs/index.html"
 		}
 		ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("http://localhost:8080/swagger/doc.json"))(ctx)
 	})

@@ -8,7 +8,7 @@ import (
 	"github.com/golang-migrate/migrate"
 	"github.com/golang-migrate/migrate/database/sqlite3"
 	"github.com/golang-migrate/migrate/source/file"
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/mattn/go-sqlite3"
 )
 
 func main() {

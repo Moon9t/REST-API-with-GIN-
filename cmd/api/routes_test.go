@@ -15,7 +15,6 @@ import (
 	"fmt"
 
 	"github.com/golang-jwt/jwt/v4"
-	_ "github.com/mattn/go-sqlite3"
 )
 
 // helper to create an application with a temp sqlite DB and run migrations
