@@ -134,12 +134,15 @@ jobs:
           EC2_USER: ${{ secrets.EC2_USER }}
           EC2_HOST: ${{ secrets.EC2_HOST }}
         run: |
+          # Ensure /tmp exists on the remote host (some systems may not have it or may restrict it)
+          ssh -i ~/.ssh/deploy_key ${EC2_USER}@${EC2_HOST} 'mkdir -p /tmp && chmod 1777 /tmp' || true
+
           # Upload deployment package
           scp -i ~/.ssh/deploy_key eventhub-deployment.tar.gz ${EC2_USER}@${EC2_HOST}:/tmp/
-          
+
           # Upload deployment script
           scp -i ~/.ssh/deploy_key scripts/deploy.sh ${EC2_USER}@${EC2_HOST}:/tmp/
-          
+
           # Execute deployment
           ssh -i ~/.ssh/deploy_key ${EC2_USER}@${EC2_HOST} 'bash /tmp/deploy.sh'
 
