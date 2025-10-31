@@ -47,6 +47,9 @@ data.db
 .env.local
 .env.*
 
+# Keep a template env file tracked for CI/deploy (don't include secrets)
+!.env.example
+
 # Docker
 .env.*.local
 
