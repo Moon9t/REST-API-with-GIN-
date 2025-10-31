@@ -1,32 +1,57 @@
 .env
+# Logs
 *.log
+logs/
+
+# Temporary files
 *.tmp
 *.swp
-node_modules/
-dist/
-build/
-.DS_Store
-Thumbs.db
-.vscode/
-.idea/
 *.bak
 *.old
-*.test
-coverage/
-.env.local
-.env.*
-mobile-app/
 
-# Untrack frontend source files and lockfiles (kept locally only)
-*.ts
-*.tsx
-*.js
-*.jsx
-*.json
-package-lock.json
-yarn.lock
-*.map
+# macOS / Windows
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+
+# Node/NPM
+node_modules/
+
+# Frontend production build
+/frontend/build/
+/public/build/
+build/
+dist/
+
+# Go build artifacts
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test and coverage
+coverage/
+coverage.out
+*.coverprofile
 
 # Database file(s) - keep local only
 data.db
 *.db
+
+# Environment files
+.env.local
+.env.*
+
+# Docker
+.env.*.local
+
+# Temporary project folders
+tmp/
+
+# Keep package lockfiles and source files tracked
+# (Do NOT ignore .ts/.js/.json source files in repo root)
