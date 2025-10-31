@@ -4,9 +4,9 @@ set -euo pipefail
 # --- CONFIGURATION ---
 APP_NAME="eventhub"
 APP_DIR="/opt/$APP_NAME"
-REPO_DIR="$APP_DIR/repo"
 FRONTEND_DIR="$APP_DIR/frontend"
-BACKEND_BINARY="$REPO_DIR/eventhub-api"
+BACKEND_BINARY="$APP_DIR/$APP_NAME-api"
+MIGRATIONS_DIR="$APP_DIR/migrations"
 ENV_FILE="$APP_DIR/.env"
 SYSTEMD_SERVICE="eventhub.service"
 DEPLOYMENT_ARCHIVE="/tmp/eventhub-deployment.tar.gz"
@@ -29,21 +29,18 @@ fi
 echo "🛑 Stopping EventHub service..."
 sudo systemctl stop "$SYSTEMD_SERVICE" || echo "Service was not running"
 
-# --- PREPARE DIRECTORIES ---
 echo "📁 Preparing deployment directories..."
-sudo mkdir -p "$REPO_DIR" "$FRONTEND_DIR"
-sudo chown "$USER:$USER" "$APP_DIR" "$REPO_DIR" "$FRONTEND_DIR"
+sudo mkdir -p "$APP_DIR" "$FRONTEND_DIR" "$MIGRATIONS_DIR"
+sudo chown "$USER:$USER" "$APP_DIR" "$FRONTEND_DIR" "$MIGRATIONS_DIR"
 
 # --- EXTRACT NEW DEPLOYMENT ---
 echo "📦 Extracting deployment package..."
-sudo tar -xzf "$DEPLOYMENT_ARCHIVE" -C "$REPO_DIR"
+sudo tar -xzf "$DEPLOYMENT_ARCHIVE" -C "$APP_DIR"
 
 # --- BACKEND DEPLOYMENT ---
 echo "[deploy] Deploying backend..."
 if [ -f "$BACKEND_BINARY" ]; then
-    echo "[deploy] Replacing backend binary..."
-    cp "$BACKEND_BINARY" "$APP_DIR/$APP_NAME"
-    sudo chmod 755 "$APP_DIR/$APP_NAME"
+    sudo chmod 755 "$BACKEND_BINARY"
 else
     echo "[deploy] ERROR: Backend binary not found at $BACKEND_BINARY" >&2
     exit 1
@@ -51,9 +48,9 @@ fi
 
 # --- FRONTEND DEPLOYMENT ---
 echo "[deploy] Deploying frontend..."
-if [ -d "$REPO_DIR/frontend/build" ]; then
+if [ -d "$APP_DIR/frontend/build" ]; then
     rm -rf "$FRONTEND_DIR/build"
-    cp -r "$REPO_DIR/frontend/build" "$FRONTEND_DIR/"
+    cp -r "$APP_DIR/frontend/build" "$FRONTEND_DIR/"
     echo "[deploy] Frontend build copied."
 else
     echo "[deploy] WARNING: Frontend build directory not found." >&2
@@ -61,18 +58,21 @@ fi
 
 # --- ENVIRONMENT FILE ---
 echo "[deploy] Updating environment file..."
-if [ -f "$REPO_DIR/.env" ]; then
-    cp "$REPO_DIR/.env" "$ENV_FILE"
+if [ -f "$APP_DIR/.env" ]; then
     sudo chmod 600 "$ENV_FILE"
 else
-    echo "[deploy] WARNING: .env file not found in repo." >&2
+    echo "[deploy] WARNING: .env file not found in app directory." >&2
 fi
 
 # --- RUN DATABASE MIGRATIONS ---
 echo "🗄️  Running database migrations..."
-cd "$APP_DIR"
-export FORCE_MIGRATE=0
-./$APP_NAME migrate 2>&1 || echo "Migrations completed or no changes needed"
+if [ -d "$MIGRATIONS_DIR" ]; then
+    cd "$APP_DIR"
+    export FORCE_MIGRATE=0
+    ./$APP_NAME-api migrate -path "$MIGRATIONS_DIR" 2>&1 || echo "Migrations completed or no changes needed"
+else
+    echo "[deploy] WARNING: Migrations directory not found at $MIGRATIONS_DIR" >&2
+fi
 
 # --- RELOAD SYSTEMD AND START SERVICE ---
 echo "🔄 Reloading systemd and starting service..."
