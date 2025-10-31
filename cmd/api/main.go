@@ -6,6 +6,7 @@ import (
 	"os"
 	"rest-api-in-gin/internal/database"
 	"rest-api-in-gin/internal/env"
+	"time"
 
 	_ "github.com/joho/godotenv/autoload"
 	_ "github.com/mattn/go-sqlite3"
@@ -15,20 +16,34 @@ import (
 	"github.com/golang-migrate/migrate/v4/source/file"
 )
 
-// swagger
-// @title REST API in Gin
-// @version 1.0
-// @description This is a REST API server implemented in Go using the Gin framework.
+// @title EventHub API
+// @version 1.0.0
+// @description REST API for event management powered by Eclipse Softworks
+// @termsOfService https://eclipse-softworks.com/terms
+
+// @contact.name Eclipse Softworks API Support
+// @contact.url https://eclipse-softworks.com/support
+// @contact.email support@eclipse-softworks.com
+
+// @license.name MIT
+// @license.url https://opensource.org/licenses/MIT
+
+// @host localhost:8080
+// @BasePath /api/v1
+
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
 // @description Type "Bearer" followed by a space and JWT token.
+
 // @tag.name Events
 // @tag.description Operations to manage events (create, list, update, delete)
 // @tag.name Auth
 // @tag.description Authentication endpoints (login, register)
 // @tag.name Attendees
 // @tag.description Manage attendees for events
+// @tag.name Health
+// @tag.description System health and monitoring endpoints
 
 type application struct {
 	db        *sql.DB
@@ -38,11 +53,28 @@ type application struct {
 }
 
 func main() {
+	// Validate critical environment variables
+	jwtSecret := env.GetEnvString("JWT_Secret", "")
+	if jwtSecret == "" || jwtSecret == "some-very-secret-secret" {
+		log.Println("WARNING: Using default JWT secret. Set JWT_Secret environment variable for production!")
+		jwtSecret = "some-very-secret-secret"
+	}
+
 	db, err := sql.Open("sqlite3", "./data.db")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
+
+	// Configure connection pool
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(25)
+	db.SetConnMaxLifetime(5 * time.Minute)
+
+	// Verify database connection
+	if err := db.Ping(); err != nil {
+		log.Fatalf("Database connection failed: %v", err)
+	}
 
 	if err := runMigrationsIfNeeded(db); err != nil {
 		log.Fatalf("migrations failed: %v", err)
@@ -51,8 +83,9 @@ func main() {
 	models := database.NewModels(db)
 
 	app := &application{
+		db:        db,
 		port:      env.GetEnvInt("PORT", 8080),
-		jwtSecret: env.GetEnvString("JWT_Secret", "some-very-secret-secret"),
+		jwtSecret: jwtSecret,
 		models:    models,
 	}
 

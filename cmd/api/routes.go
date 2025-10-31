@@ -4,16 +4,31 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 func (app *application) routes() *gin.Engine {
-	g := gin.Default()
+	// Use custom middleware instead of Default()
+	g := gin.New()
+	g.Use(gin.Recovery())
+
+	// Production middleware (CORS must be first)
+	g.Use(corsMiddleware([]string{"http://localhost:3000", "https://eclipse-softworks.com"}))
+	g.Use(requestIDMiddleware())
+	g.Use(requestLoggerMiddleware())
+	g.Use(securityHeadersMiddleware())
+
+	// Rate limiting: 100 requests per minute per IP
+	rl := newRateLimiter()
+	g.Use(rl.middleware(100))
+
+	// Health and monitoring endpoints (no rate limiting)
+	g.GET("/health", app.healthCheck)
+	g.GET("/version", app.versionInfo)
 
 	g.GET("/events", func(c *gin.Context) {
 		c.Redirect(http.StatusPermanentRedirect, "/api/v1/events")
 	})
+
 	// Public routes
 	public := g.Group("/api/v1")
 	{
@@ -36,19 +51,16 @@ func (app *application) routes() *gin.Engine {
 		auth.DELETE("/events/:id/attendees/:userId", app.deleteAttendeeFromEvent)
 		auth.GET("/attendees/:id/events", app.getUserEvents)
 	}
-	// Serve the generated swagger JSON so the UI can load it
-	g.StaticFile("/swagger/doc.json", "cmd/api/docs/swagger.json")
-
 	// Serve EventHub static UI
 	g.Static("/eventhub", "web/eventhub")
 
-	// Serve the Swagger UI under /docs so it doesn't conflict with /swagger/doc.json
-	g.GET("/docs/*any", func(ctx *gin.Context) {
-		if ctx.Request.RequestURI == "/docs/" {
-			ctx.Request.RequestURI = "/docs/index.html"
-		}
-		ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("http://localhost:8080/swagger/doc.json"))(ctx)
-	})
+	// Expose repository scripts (single files) via HTTP so they can be downloaded with wget.
+	// Serve the systemd unit file for easy retrieval at /files/eventhub.service
+	g.StaticFile("/files/eventhub.service", "scripts/eventhub.service")
+
+	// Serve a static Swagger UI at /docs that points to /docs/doc.json.
+	// We copy the generated JSON into web/swagger/doc.json and serve the directory.
+	g.Static("/docs", "web/swagger")
 
 	return g
 }

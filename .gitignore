@@ -53,5 +53,8 @@ data.db
 # Temporary project folders
 tmp/
 
+# Ignore compiled binary at repo root
+/main
+
 # Keep package lockfiles and source files tracked
 # (Do NOT ignore .ts/.js/.json source files in repo root)

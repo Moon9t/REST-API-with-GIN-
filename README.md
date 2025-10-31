@@ -1,143 +1,391 @@
-
 <img width="1024" height="1024" alt="evenhub_logo" src="https://github.com/user-attachments/assets/346562e8-d1ec-4c2f-aa0e-ac4961309c1f" />
 
-EventHub — RESTful API
-======================
+# EventHub API
 
-Overview
---------
+**Enterprise-grade RESTful API for Event Management**
 
-EventHub is a RESTful API server implemented in Go using the Gin framework. It provides endpoints to manage users, events and attendees, uses JWT for authentication, and stores data in SQLite. The repository also contains migration tooling and a small mobile app client.
+Powered by [Eclipse Softworks](https://eclipse-softworks.com)
 
-Repository layout
------------------
+---
 
-- cmd/
-  - api/        - API server entry point and handlers
-  - migrate/    - migration runner and SQL migrations
+## Overview
 
-- internal/
-  - database/   - models and DB access layer
-  - env/        - environment helpers
+EventHub is a production-ready RESTful API server implemented in Go using the Gin framework. It provides comprehensive endpoints to manage users, events, and attendees with enterprise-grade security, monitoring, and performance features.
 
-- docs/         - misc docs and curl commands
+### Key Features
 
-- mobile-app/   - React Native (Expo) client
+✅ **Production-Ready Security**
+- JWT-based authentication
+- Rate limiting (100 requests/min per IP)
+- CORS protection
+- Security headers (XSS, CSRF, CSP)
+- Request ID tracking for distributed tracing
 
-- .github/      - CI workflows
+✅ **Observability**
+- Health check endpoint
+- Version information endpoint
+- Structured request logging
+- Database connection monitoring
 
-Requirements
-------------
+✅ **Performance**
+- Database connection pooling
+- Graceful shutdown
+- Optimized timeouts
+- Static asset serving
 
-- Go 1.21
-- sqlite3 development headers (for CGO: libsqlite3-dev on Debian/Ubuntu)
-- A POSIX-compatible shell for local commands (zsh, bash)
+✅ **Developer Experience**
+- Auto-generated Swagger/OpenAPI documentation
+- Comprehensive test coverage
+- Database migrations
+- Environment-based configuration
 
-Environment
------------
+---
 
-The server reads configuration from environment variables. Important ones:
+## Repository Structure
 
-- PORT — HTTP port (default: 8080)
-- JWT_Secret — secret used to sign JWT tokens (default in dev: some-very-secret-secret)
-- FORCE_MIGRATE — when set to 1 the migration step will run even if schema_migrations exists
+```
+.
+├── cmd/
+│   ├── api/              # API server and handlers
+│   │   ├── main.go       # Entry point with Swagger annotations
+│   │   ├── server.go     # HTTP server with graceful shutdown
+│   │   ├── routes.go     # Route definitions
+│   │   ├── auth.go       # Authentication endpoints
+│   │   ├── events.go     # Event management
+│   │   ├── health.go     # Health & monitoring endpoints
+│   │   ├── middleware.go # JWT middleware
+│   │   └── production_middleware.go # Production features
+│   └── migrate/          # Database migrations
+│
+├── internal/
+│   ├── database/         # Data models and DB layer
+│   └── env/              # Environment configuration
+│
+├── docs/                 # Documentation
+├── web/                  # Static assets (Swagger UI)
+└── .github/              # CI/CD workflows
+```
 
-Local development
------------------
+---
 
-1. Install system dependency (Ubuntu/Debian):
+## Requirements
 
+- **Go 1.21+**
+- **SQLite3** development headers (`libsqlite3-dev` on Ubuntu/Debian)
+- POSIX-compatible shell (bash/zsh)
+
+---
+
+## Quick Start
+
+### 1. Install Dependencies
+
+**Ubuntu/Debian:**
 ```bash
 sudo apt-get update
 sudo apt-get install -y libsqlite3-dev
 ```
 
-1. Run migrations (creates data.db):
+**Install Go dependencies:**
+```bash
+go mod download
+```
+
+### 2. Configure Environment
+
+Create or update `.env` file:
+```bash
+PORT=8080
+JWT_Secret=your-super-secure-secret-key-min-32-chars
+BASE_URL=http://localhost:8080
+```
+
+⚠️ **Security Warning**: Never use default secrets in production!
+
+### 3. Run Migrations
 
 ```bash
 cd cmd/migrate
 go run .
+cd ../..
 ```
 
-1. Start the API server:
+### 4. Start the Server
 
 ```bash
 cd cmd/api
 go run .
 ```
 
-By default the server listens on :8080. The API root is mounted under `/api/v1`.
+The server will start with:
+- 🚀 API: `http://localhost:8080/api/v1`
+- 📊 Health: `http://localhost:8080/health`
+- 📚 Docs: `http://localhost:8080/docs`
+- ℹ️ Version: `http://localhost:8080/version`
 
-Testing
--------
+---
 
-Run the package tests (the `cmd/api` tests create temporary SQLite DBs):
+## API Endpoints
 
+### Health & Monitoring
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/health` | Health check with DB status | No |
+| GET | `/version` | Version and build info | No |
+
+### Authentication
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| POST | `/api/v1/auth/register` | Create new user account | No |
+| POST | `/api/v1/auth/login` | Login and get JWT token | No |
+
+### Events
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/v1/events` | List all events | No |
+| GET | `/api/v1/events/{id}` | Get single event | No |
+| POST | `/api/v1/events` | Create event | Yes |
+| PUT | `/api/v1/events/{id}` | Update event (owner) | Yes |
+| DELETE | `/api/v1/events/{id}` | Delete event (owner) | Yes |
+
+### Attendees
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| POST | `/api/v1/events/{id}/attendees?user_id={id}` | Add attendee | Yes |
+| GET | `/api/v1/events/{id}/attendees` | List attendees | Yes |
+| DELETE | `/api/v1/events/{id}/attendees/{userId}` | Remove attendee | Yes |
+| GET | `/api/v1/attendees/{id}/events` | User's events | Yes |
+
+---
+
+## Authentication
+
+Protected endpoints require a JWT bearer token:
+
+```bash
+# Login to get token
+curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "user@example.com", "password": "password123"}'
+
+# Use token in requests
+curl -X POST http://localhost:8080/api/v1/events \
+  -H "Authorization: Bearer <your-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Team Meeting", "location": "Office", "date": "2025-12-01T10:00:00Z"}'
+```
+
+---
+
+## Testing
+
+Run all tests:
 ```bash
 go test ./... -v
 ```
 
-Swagger / API docs
-------------------
+Run with coverage:
+```bash
+go test ./... -coverprofile=coverage.out
+go tool cover -html=coverage.out
+```
 
-The project uses `swag` (swaggo) to generate OpenAPI docs. To generate docs locally:
+---
+
+## API Documentation
+
+### Generate Swagger Docs
 
 ```bash
 go install github.com/swaggo/swag/cmd/swag@v1.8.12
 $(go env GOPATH)/bin/swag init -g cmd/api/main.go -o cmd/api/docs --parseDependency --parseInternal
 ```
 
-The server exposes a Swagger UI route at `/swagger/*any`. After generating docs, open:
+### Access Documentation
 
-- [Swagger UI](http://localhost:8080/swagger/index.html)
-- [OpenAPI JSON](http://localhost:8080/swagger/doc.json)
+- **Swagger UI**: http://localhost:8080/docs
+- **OpenAPI JSON**: http://localhost:8080/docs/doc.json
 
-Key routes
-----------
+---
 
-All endpoints are prefixed with `/api/v1`. Major endpoints include:
+## Production Deployment
 
-- `POST /api/v1/auth/register` — register a new user
-- `POST /api/v1/auth/login` — log in and receive a JWT token
-- `GET /api/v1/events` — list events (public)
-- `GET /api/v1/events/{id}` — get a single event (public)
-- `POST /api/v1/events` — create event (authenticated)
-- `PUT /api/v1/events/{id}` — update event (owner only)
-- `DELETE /api/v1/events/{id}` — delete event (owner only)
-- `POST /api/v1/events/{id}/attendees?user_id={id}` — add attendee (self or owner/admin)
-- `GET /api/v1/events/{id}/attendees` — list attendees
-- `DELETE /api/v1/events/{id}/attendees/{userId}` — remove attendee
-- `GET /api/v1/attendees/{id}/events` — list events a user attends
+### Environment Variables
 
-Authentication
---------------
+Required for production:
 
-JWT bearer tokens are required for protected routes. Set the `Authorization` header to:
+```bash
+# Server
+PORT=8080
+BASE_URL=https://api.yourdomain.com
 
-```text
-Authorization: Bearer <token>
+# Security (REQUIRED - generate strong random values)
+JWT_Secret=<256-bit-random-string>
+
+# Database
+DB_PATH=./data.db
+
+# Optional
+FORCE_MIGRATE=0  # Set to 1 to force migrations
 ```
 
-CI
---
-The repository includes a GitHub Actions workflow in `.github/workflows/ci.yml` that:
-- sets up Go
-- runs tests
-- builds the API
-- generates Swagger docs (the docs job installs `swag` and uploads `cmd/api/docs` as an artifact)
+### Build for Production
 
-Notes and maintainer tips
-------------------------
-- The project uses `internal/database` for models; when generating Swagger docs the generator may need types to be referenced from `main` or a fully-qualified module path to resolve models. A small alias file was used to help the generator during development.
-- If you update `swag` or the gin-swagger runtime, re-run doc generation and check `cmd/api/docs/docs.go` for compatibility issues.
-- Consider pinning the `swag` version in CI to avoid mismatches between local and CI-generated docs.
+```bash
+# Build binary with version info
+go build -ldflags="-X 'main.version=1.0.0' -X 'main.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)' -X 'main.gitCommit=$(git rev-parse HEAD)'" -o eventhub-api ./cmd/api
 
-Contributing
-------------
-- Create a branch for your work.
-- Add tests for new behavior and run `go test ./...`.
-- Update or re-generate Swagger docs when you change handlers or models.
+# Run
+./eventhub-api
+```
 
-License
--------
-This repository includes a LICENSE file (see project root).
+### Docker Deployment
+
+```bash
+# Build image
+docker build -t eventhub-api:latest .
+
+# Run container
+docker run -d \
+  -p 8080:8080 \
+  -e JWT_Secret=<your-secret> \
+  -v $(pwd)/data:/app/data \
+  --name eventhub \
+  eventhub-api:latest
+```
+
+### Docker Compose
+
+```bash
+docker-compose up -d
+```
+
+---
+
+## Security Features
+
+### Rate Limiting
+- Default: 100 requests per minute per IP
+- Configurable per endpoint
+- Token bucket algorithm
+
+### CORS
+- Configurable allowed origins
+- Credentials support
+- Pre-flight request handling
+
+### Security Headers
+- X-Content-Type-Options: nosniff
+- X-Frame-Options: DENY
+- X-XSS-Protection
+- Strict-Transport-Security (HSTS)
+- Content-Security-Policy (CSP)
+
+### Request Tracking
+- Unique request ID per request
+- Propagated in response headers
+- Used for distributed tracing
+
+---
+
+## Monitoring & Observability
+
+### Health Check Response
+
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-10-31T08:00:00Z",
+  "version": "1.0.0",
+  "checks": {
+    "database": "healthy"
+  }
+}
+```
+
+### Version Information
+
+```json
+{
+  "version": "1.0.0",
+  "build_time": "2025-10-31T08:00:00Z",
+  "git_commit": "abc123...",
+  "go_version": "go1.21.0",
+  "vendor": "Eclipse Softworks"
+}
+```
+
+---
+
+## Performance Optimization
+
+- **Connection Pooling**: 25 max open/idle connections
+- **Timeouts**: Read (10s), Write (30s), Idle (60s)
+- **Graceful Shutdown**: 30s timeout for in-flight requests
+- **Static Asset Caching**: Optimized file serving
+
+---
+
+## CI/CD
+
+GitHub Actions workflow includes:
+- Automated testing
+- Build verification
+- Swagger docs generation
+- Artifact uploads
+
+See `.github/workflows/ci.yml` for details.
+
+---
+
+## Contributing
+
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open Pull Request
+
+### Development Guidelines
+
+- Add tests for new features
+- Update Swagger annotations
+- Run `go test ./...` before committing
+- Follow existing code patterns
+
+---
+
+## Support
+
+**Eclipse Softworks Support**
+- Website: https://eclipse-softworks.com
+- Email: support@eclipse-softworks.com
+- Documentation: https://eclipse-softworks.com/support
+
+---
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details
+
+---
+
+## Acknowledgments
+
+Built with:
+- [Gin Web Framework](https://gin-gonic.com/)
+- [Swaggo](https://github.com/swaggo/swag)
+- [golang-jwt](https://github.com/golang-jwt/jwt)
+- [golang-migrate](https://github.com/golang-migrate/migrate)
+
+---
+
+<div align="center">
+  <p><strong>Powered by Eclipse Softworks</strong></p>
+  <p>Leading Software Development Company in South Africa</p>
+  <p><a href="https://eclipse-softworks.com">eclipse-softworks.com</a></p>
+</div>

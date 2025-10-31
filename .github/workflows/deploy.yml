@@ -1,0 +1,155 @@
+name: Build and Deploy EventHub
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+env:
+  GO_VERSION: '1.21'
+  NODE_VERSION: '18'
+  DEPLOY_PATH: '/opt/eventhub'
+
+jobs:
+  build-backend:
+    name: Build Backend
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Build backend binary
+        run: |
+          CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -o eventhub-api ./cmd/api
+          chmod +x eventhub-api
+
+      - name: Upload backend artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: backend-binary
+          path: eventhub-api
+          retention-days: 1
+
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: ./frontend
+        run: npm run build
+        env:
+          CI: false
+          REACT_APP_API_URL: ${{ secrets.API_URL || 'http://localhost:8080' }}
+
+      - name: Upload frontend artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: frontend-build
+          path: frontend/build
+          retention-days: 1
+
+  deploy:
+    name: Deploy to EC2
+    needs: [build-backend, build-frontend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download backend artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: backend-binary
+          path: ./artifacts
+
+      - name: Download frontend artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: frontend-build
+          path: ./artifacts/frontend
+
+      - name: Prepare deployment package
+        run: |
+          mkdir -p deployment
+          mv artifacts/eventhub-api deployment/
+          mv artifacts/frontend deployment/
+          cp -r cmd/migrate deployment/
+          cp .env.example deployment/.env
+          chmod +x deployment/eventhub-api
+
+      - name: Create deployment archive
+        run: |
+          cd deployment
+          tar -czf ../eventhub-deployment.tar.gz *
+          cd ..
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to EC2
+        env:
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          # Upload deployment package
+          scp -i ~/.ssh/deploy_key eventhub-deployment.tar.gz ${EC2_USER}@${EC2_HOST}:/tmp/
+          
+          # Upload deployment script
+          scp -i ~/.ssh/deploy_key scripts/deploy.sh ${EC2_USER}@${EC2_HOST}:/tmp/
+          
+          # Execute deployment
+          ssh -i ~/.ssh/deploy_key ${EC2_USER}@${EC2_HOST} 'bash /tmp/deploy.sh'
+
+      - name: Verify deployment
+        env:
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          sleep 5
+          ssh -i ~/.ssh/deploy_key ${EC2_USER}@${EC2_HOST} 'curl -f http://localhost:8080/health || exit 1'
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -f ~/.ssh/deploy_key
+          rm -f eventhub-deployment.tar.gz

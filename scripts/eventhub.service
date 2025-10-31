@@ -1,0 +1,44 @@
+[Unit]
+Description=EventHub API Server
+Documentation=https://github.com/Moon9t/REST-API-with-GIN-
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+# For Amazon Linux, change to: User=ec2-user and Group=ec2-user
+WorkingDirectory=/opt/eventhub
+
+# Environment
+Environment="PORT=8080"
+Environment=26f55f8a0fc586bba5f9874790c5e50a0526942cbe9c2f81d01b81a633d6d467
+EnvironmentFile=-/opt/eventhub/.env
+
+# Execute
+ExecStart=/opt/eventhub/eventhub-api
+ExecReload=/bin/kill -HUP $MAINPID
+
+# Restart policy
+Restart=always
+RestartSec=5
+StartLimitInterval=0
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/eventhub
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=eventhub
+
+# Resource limits
+LimitNOFILE=65535
+LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target

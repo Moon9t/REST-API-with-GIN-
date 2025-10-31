@@ -1,0 +1,2 @@
+-- no-op migration placeholder for version 7 (up)
+-- intentionally left blank

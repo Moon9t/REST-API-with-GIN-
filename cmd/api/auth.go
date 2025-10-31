@@ -26,7 +26,8 @@ type loginRequest struct {
 }
 
 type loginResponse struct {
-	Token string `json:"token"`
+	Token string        `json:"token"`
+	User  *database.User `json:"user"`
 }
 
 // @Summary Login user
@@ -73,7 +74,13 @@ func (app *application) loginUser(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, loginResponse{Token: tokenString})
+	// Remove password from response
+	user.Password = ""
+
+	c.JSON(http.StatusOK, loginResponse{
+		Token: tokenString,
+		User:  user,
+	})
 }
 
 // @Summary Register a new user
@@ -118,4 +125,25 @@ func (app *application) createUser(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"message": "User created successfully"})
+}
+
+// @Summary Get current user
+// @Description Get the authenticated user's information
+// @Tags Auth
+// @Produce json
+// @Success 200 {object} database.User
+// @Failure 401 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/v1/auth/me [get]
+func (app *application) getCurrentUser(c *gin.Context) {
+	user, err := app.getUserFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	// Remove password from response
+	user.Password = ""
+
+	c.JSON(http.StatusOK, user)
 }

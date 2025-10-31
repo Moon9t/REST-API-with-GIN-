@@ -63,13 +63,37 @@ func (app *application) createEvent(c *gin.Context) {
 }
 
 // @Summary Get all events
-// @Description Retrieve a list of all events
+// @Description Retrieve a list of all events with pagination and filtering
 // @Tags Events
 // @Accept json
 // @Produce json
-// @Success 200 {array} main.EventDoc
+// @Param page query int false "Page number (default: 1)"
+// @Param limit query int false "Items per page (default: 10, max: 100)"
+// @Param search query string false "Search in event name and description"
+// @Success 200 {object} map[string]interface{}
 // @Router /api/v1/events [get]
 func (app *application) getAllEvets(c *gin.Context) {
+	// Parse pagination parameters
+	page := 1
+	if p := c.Query("page"); p != "" {
+		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
+			page = parsed
+		}
+	}
+
+	limit := 10
+	if l := c.Query("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
+			if parsed > 100 {
+				parsed = 100 // Max limit
+			}
+			limit = parsed
+		}
+	}
+
+	offset := (page - 1) * limit
+	search := c.Query("search")
+
 	events, err := app.models.Events.GetAll()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve events"})
@@ -80,7 +104,48 @@ func (app *application) getAllEvets(c *gin.Context) {
 		events = []*database.Event{}
 	}
 
-	c.JSON(http.StatusOK, events)
+	// Apply search filter
+	if search != "" {
+		filtered := make([]*database.Event, 0)
+		searchLower := strings.ToLower(search)
+		for _, event := range events {
+			if strings.Contains(strings.ToLower(event.Name), searchLower) ||
+				strings.Contains(strings.ToLower(event.Description), searchLower) ||
+				strings.Contains(strings.ToLower(event.Location), searchLower) {
+				filtered = append(filtered, event)
+			}
+		}
+		events = filtered
+	}
+
+	total := len(events)
+
+	// Apply pagination
+	if offset >= total {
+		events = []*database.Event{}
+	} else {
+		end := offset + limit
+		if end > total {
+			end = total
+		}
+		events = events[offset:end]
+	}
+
+	// Calculate pagination metadata
+	totalPages := (total + limit - 1) / limit
+	if totalPages == 0 {
+		totalPages = 1
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": events,
+		"pagination": gin.H{
+			"page":        page,
+			"limit":       limit,
+			"total":       total,
+			"total_pages": totalPages,
+		},
+	})
 }
 
 // @Summary Get a single event
