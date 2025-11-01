@@ -15,9 +15,9 @@ BACKUP_PATH="/opt/eventhub-backups"
 ACTUAL_USER="${SUDO_USER:-${USER}}"
 if [ -z "$ACTUAL_USER" ] || [ "$ACTUAL_USER" = "root" ]; then
     # Fallback to common EC2 users
-    if id ec2-user &>/dev/null; then
+    if id ec2-user >/dev/null 2>&1; then
         ACTUAL_USER="ec2-user"
-    elif id ubuntu &>/dev/null; then
+    elif id ubuntu >/dev/null 2>&1; then
         ACTUAL_USER="ubuntu"
     fi
 fi
