@@ -113,6 +113,7 @@ jobs:
           mv artifacts/eventhub-api deployment/
           mv artifacts/frontend deployment/
           cp -r cmd/migrate deployment/
+          cp -r web deployment/
           cp .env.example deployment/.env
           chmod +x deployment/eventhub-api
 
