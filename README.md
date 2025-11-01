@@ -53,17 +53,27 @@ EventHub is a production-ready RESTful API server implemented in Go using the Gi
 │   │   ├── auth.go       # Authentication endpoints
 │   │   ├── events.go     # Event management
 │   │   ├── health.go     # Health & monitoring endpoints
-│   │   ├── middleware.go # JWT middleware
-│   │   └── production_middleware.go # Production features
+│   │   ├── middleware.go # All middleware (JWT, CORS, rate limiting, logging, recovery)
+│   │   ├── context.go    # Context helpers
+│   │   └── docs/         # Auto-generated Swagger docs
 │   └── migrate/          # Database migrations
+│       └── migrations/   # SQL migration files
 │
 ├── internal/
 │   ├── database/         # Data models and DB layer
+│   │   ├── models.go     # Database models
+│   │   ├── users.go      # User operations
+│   │   ├── events.go     # Event operations
+│   │   └── attendees.go  # Attendee operations
 │   └── env/              # Environment configuration
 │
-├── docs/                 # Documentation
-├── web/                  # Static assets (Swagger UI)
+├── frontend/             # React frontend application
+├── docs/                 # Documentation files
+├── scripts/              # Deployment and utility scripts
+├── web/                  # Static assets
+│   └── swagger/          # Swagger UI files
 └── .github/              # CI/CD workflows
+    └── workflows/        # GitHub Actions
 ```
 
 ---
@@ -266,29 +276,55 @@ docker-compose up -d
 
 ---
 
-## Security Features
+## Security & Middleware Features
+
+### JWT Authentication
+- Bearer token validation
+- Automatic token expiration (24 hours)
+- Signing method verification
+- User context injection
+- Detailed error messages
 
 ### Rate Limiting
 - Default: 100 requests per minute per IP
-- Configurable per endpoint
-- Token bucket algorithm
+- Token bucket algorithm with automatic refill
+- Temporary IP blocking on repeated violations
+- Rate limit headers (X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset)
+- Retry-After header for blocked requests
+- Automatic cleanup of inactive visitors
 
-### CORS
+### CORS (Cross-Origin Resource Sharing)
 - Configurable allowed origins
+- Pre-compiled origin map for performance
 - Credentials support
-- Pre-flight request handling
+- Automatic localhost allowance for development
+- Proper preflight (OPTIONS) request handling
+- Vary header for caching
 
 ### Security Headers
 - X-Content-Type-Options: nosniff
 - X-Frame-Options: DENY
-- X-XSS-Protection
-- Strict-Transport-Security (HSTS)
-- Content-Security-Policy (CSP)
+- X-XSS-Protection: 1; mode=block
+- Strict-Transport-Security (HSTS) - production only
+- Referrer-Policy: strict-origin-when-cross-origin
+- Permissions-Policy: geolocation=(), microphone=(), camera=()
 
-### Request Tracking
-- Unique request ID per request
-- Propagated in response headers
-- Used for distributed tracing
+### Request Tracking & Logging
+- Unique request ID per request (UUID v4)
+- Request ID propagated in response headers
+- Comprehensive request logging with:
+  - Status code with visual indicators (🟢🟡🔴)
+  - Request latency
+  - Response body size
+  - Client IP and User-Agent
+  - Slow request detection (>1 second)
+- Distributed tracing support
+
+### Recovery & Error Handling
+- Automatic panic recovery
+- Graceful error responses
+- Request ID included in error responses
+- Stack trace logging for debugging
 
 ---
 
