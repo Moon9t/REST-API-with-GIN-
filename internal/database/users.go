@@ -42,15 +42,16 @@ func (m *UserModel) Get(id int) (*User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	query := `SELECT id, email, name, password, COALESCE(role,'user') FROM users WHERE id = ?`
+	query := `SELECT id, email, name, password FROM users WHERE id = ?`
 	var user User
-	err := m.DB.QueryRowContext(ctx, query, id).Scan(&user.ID, &user.Email, &user.Name, &user.Password, &user.Role)
+	err := m.DB.QueryRowContext(ctx, query, id).Scan(&user.ID, &user.Email, &user.Name, &user.Password)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
 		return nil, err
 	}
+	user.Role = "user" // Default role
 	return &user, nil
 }
 
@@ -58,14 +59,15 @@ func (m *UserModel) GetByEmail(email string) (*User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	query := `SELECT id, email, name, password, COALESCE(role,'user') FROM users WHERE email = ?`
+	query := `SELECT id, email, name, password FROM users WHERE email = ?`
 	var user User
-	err := m.DB.QueryRowContext(ctx, query, email).Scan(&user.ID, &user.Email, &user.Name, &user.Password, &user.Role)
+	err := m.DB.QueryRowContext(ctx, query, email).Scan(&user.ID, &user.Email, &user.Name, &user.Password)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
 		return nil, err
 	}
+	user.Role = "user" // Default role
 	return &user, nil
 }
