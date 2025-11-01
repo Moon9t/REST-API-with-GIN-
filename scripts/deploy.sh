@@ -10,14 +10,25 @@ MIGRATIONS_DIR="$APP_DIR/migrations"
 ENV_FILE="$APP_DIR/.env"
 SYSTEMD_SERVICE="eventhub.service"
 BACKUP_PATH="/opt/eventhub-backups"
-UPLOAD_DIRS=("~/deploy" "/home/$USER/deploy" "/tmp")
+
+# Determine actual user (works with sudo and SSH)
+ACTUAL_USER="${SUDO_USER:-${USER}}"
+if [ -z "$ACTUAL_USER" ] || [ "$ACTUAL_USER" = "root" ]; then
+    # Fallback to common EC2 users
+    if id ec2-user &>/dev/null; then
+        ACTUAL_USER="ec2-user"
+    elif id ubuntu &>/dev/null; then
+        ACTUAL_USER="ubuntu"
+    fi
+fi
+
+UPLOAD_DIRS=("$HOME/deploy" "/home/$ACTUAL_USER/deploy" "/tmp")
 
 # Find deployment archive from possible upload locations
 DEPLOYMENT_ARCHIVE=""
 for d in "${UPLOAD_DIRS[@]}"; do
-    eval expanded="$d"
-    if [ -f "$expanded/eventhub-deployment.tar.gz" ]; then
-        DEPLOYMENT_ARCHIVE="$expanded/eventhub-deployment.tar.gz"
+    if [ -f "$d/eventhub-deployment.tar.gz" ]; then
+        DEPLOYMENT_ARCHIVE="$d/eventhub-deployment.tar.gz"
         echo "📍 Found deployment archive at: $DEPLOYMENT_ARCHIVE"
         break
     fi
@@ -25,7 +36,10 @@ done
 
 if [ -z "$DEPLOYMENT_ARCHIVE" ]; then
     echo "❌ ERROR: Deployment archive not found in any upload location" >&2
-    echo "   Searched: ${UPLOAD_DIRS[*]}" >&2
+    echo "   Searched locations:" >&2
+    for d in "${UPLOAD_DIRS[@]}"; do
+        echo "   - $d/eventhub-deployment.tar.gz" >&2
+    done
     exit 1
 fi
 
@@ -84,15 +98,13 @@ echo "[deploy] Updating environment file..."
 if [ -f "$APP_DIR/.env" ]; then
     sudo chmod 600 "$ENV_FILE"
 else
-    # Try to copy .env from a few likely upload locations (CI may upload to ~/deploy or /tmp)
+    # Try to copy .env from upload locations
     COPIED_ENV=0
     for d in "${UPLOAD_DIRS[@]}"; do
-        # expand ~ if present
-        eval expanded="$d"
-        if [ -f "$expanded/.env" ]; then
-            cp "$expanded/.env" "$APP_DIR/.env"
+        if [ -f "$d/.env" ]; then
+            cp "$d/.env" "$APP_DIR/.env"
             sudo chmod 600 "$APP_DIR/.env"
-            echo "[deploy] .env file copied from $expanded/.env."
+            echo "[deploy] .env file copied from $d/.env."
             COPIED_ENV=1
             break
         fi
@@ -133,14 +145,11 @@ fi
 
 # --- CLEANUP ---
 echo "🧹 Cleaning up..."
-if [ -n "$DEPLOYMENT_ARCHIVE" ]; then
-    rm -f "$DEPLOYMENT_ARCHIVE"
-fi
-rm -f /tmp/deploy.sh || true
-rm -f ~/deploy/deploy.sh || true
-rm -f "/home/$USER/deploy/deploy.sh" || true
-rm -f ~/deploy/eventhub-deployment.tar.gz || true
-rm -f "/home/$USER/deploy/eventhub-deployment.tar.gz" || true
+# Remove deployment archive from all possible locations
+for d in "${UPLOAD_DIRS[@]}"; do
+    rm -f "$d/eventhub-deployment.tar.gz" || true
+    rm -f "$d/deploy.sh" || true
+done
 
 # --- KEEP ONLY LAST 5 BACKUPS ---
 if [ -d "$BACKUP_PATH" ]; then
