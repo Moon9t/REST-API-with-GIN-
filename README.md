@@ -2,7 +2,7 @@
 
 # EventHub API
 
-**Enterprise-grade RESTful API for Event Management**
+**RESTful API for Event Management**
 
 Powered by [Eclipse Softworks](https://eclipse-softworks.com)
 
