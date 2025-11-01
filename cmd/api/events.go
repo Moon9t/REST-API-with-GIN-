@@ -109,9 +109,8 @@ func (app *application) getAllEvets(c *gin.Context) {
 		filtered := make([]*database.Event, 0)
 		searchLower := strings.ToLower(search)
 		for _, event := range events {
-			if strings.Contains(strings.ToLower(event.Name), searchLower) ||
-				strings.Contains(strings.ToLower(event.Description), searchLower) ||
-				strings.Contains(strings.ToLower(event.Location), searchLower) {
+			if strings.Contains(strings.ToLower(event.Title), searchLower) ||
+				strings.Contains(strings.ToLower(event.Description), searchLower) {
 				filtered = append(filtered, event)
 			}
 		}

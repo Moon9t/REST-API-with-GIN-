@@ -92,7 +92,7 @@ func (m *AttendeeModel) GetEventsForUser(userID int) ([]*Event, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	query := `SELECT e.id, e.user_id, e.name, e.description, e.date, e.location FROM events e
+	query := `SELECT e.id, e.user_id, e.title, e.description, e.start_time, e.end_time, e.created_at, e.updated_at FROM events e
 			  JOIN attendees a ON e.id = a.event_id WHERE a.user_id = ?`
 	rows, err := m.DB.QueryContext(ctx, query, userID)
 	if err != nil {
@@ -103,7 +103,7 @@ func (m *AttendeeModel) GetEventsForUser(userID int) ([]*Event, error) {
 	var events []*Event
 	for rows.Next() {
 		var ev Event
-		if err := rows.Scan(&ev.ID, &ev.User_id, &ev.Name, &ev.Description, &ev.Date, &ev.Location); err != nil {
+		if err := rows.Scan(&ev.ID, &ev.User_id, &ev.Title, &ev.Description, &ev.StartTime, &ev.EndTime, &ev.CreatedAt, &ev.UpdatedAt); err != nil {
 			return nil, err
 		}
 		events = append(events, &ev)

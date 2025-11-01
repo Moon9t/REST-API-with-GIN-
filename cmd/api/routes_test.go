@@ -193,7 +193,7 @@ func TestProtectedRoutes(t *testing.T) {
 	}
 
 	// update event (owner)
-	updated := map[string]interface{}{"name": "Updated Test Event", "description": created.Description, "date": created.Date, "location": created.Location}
+	updated := map[string]interface{}{"title": "Updated Test Event", "description": created.Description, "start_time": created.StartTime, "end_time": created.EndTime}
 	ub, _ := json.Marshal(updated)
 	putReq, _ := http.NewRequest("PUT", fmt.Sprintf("%s/api/v1/events/%d", ts.URL, created.ID), bytes.NewReader(ub))
 	putReq.Header.Set("Content-Type", "application/json")
@@ -353,7 +353,7 @@ func TestProtectedErrorCases(t *testing.T) {
 
 	// 2) Forbidden update by non-owner -> expect 403
 	otherToken, _ := jwtForUser(app, u2.ID)
-	updated := map[string]interface{}{"name": "Malicious Update", "description": created.Description, "date": created.Date, "location": created.Location}
+	updated := map[string]interface{}{"title": "Malicious Update", "description": created.Description, "start_time": created.StartTime, "end_time": created.EndTime}
 	ub, _ := json.Marshal(updated)
 	ureq, _ := http.NewRequest("PUT", fmt.Sprintf("%s/api/v1/events/%d", ts.URL, created.ID), bytes.NewReader(ub))
 	ureq.Header.Set("Content-Type", "application/json")
