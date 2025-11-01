@@ -88,14 +88,9 @@ else
 fi
 
 # --- RUN DATABASE MIGRATIONS ---
-echo "🗄️  Running database migrations..."
-if [ -d "$MIGRATIONS_DIR" ]; then
-    cd "$APP_DIR"
-    export FORCE_MIGRATE=0
-    ./$APP_NAME-api migrate -path "$MIGRATIONS_DIR" 2>&1 || echo "Migrations completed or no changes needed"
-else
-    echo "[deploy] WARNING: Migrations directory not found at $MIGRATIONS_DIR" >&2
-fi
+# Note: Migrations run automatically when the service starts (see cmd/api/main.go).
+# The binary does not have a separate 'migrate' subcommand; it runs migrations on boot.
+echo "🗄️  Migrations will run automatically when service starts..."
 
 # --- RELOAD SYSTEMD AND START SERVICE ---
 echo "🔄 Reloading systemd and starting service..."
