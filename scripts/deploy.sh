@@ -9,9 +9,25 @@ BACKEND_BINARY="$APP_DIR/$APP_NAME-api"
 MIGRATIONS_DIR="$APP_DIR/migrations"
 ENV_FILE="$APP_DIR/.env"
 SYSTEMD_SERVICE="eventhub.service"
-DEPLOYMENT_ARCHIVE="/tmp/eventhub-deployment.tar.gz"
 BACKUP_PATH="/opt/eventhub-backups"
-UPLOAD_DIRS=("/tmp" "~/deploy" "/home/$USER/deploy")
+UPLOAD_DIRS=("~/deploy" "/home/$USER/deploy" "/tmp")
+
+# Find deployment archive from possible upload locations
+DEPLOYMENT_ARCHIVE=""
+for d in "${UPLOAD_DIRS[@]}"; do
+    eval expanded="$d"
+    if [ -f "$expanded/eventhub-deployment.tar.gz" ]; then
+        DEPLOYMENT_ARCHIVE="$expanded/eventhub-deployment.tar.gz"
+        echo "📍 Found deployment archive at: $DEPLOYMENT_ARCHIVE"
+        break
+    fi
+done
+
+if [ -z "$DEPLOYMENT_ARCHIVE" ]; then
+    echo "❌ ERROR: Deployment archive not found in any upload location" >&2
+    echo "   Searched: ${UPLOAD_DIRS[*]}" >&2
+    exit 1
+fi
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "🚀 EventHub Deployment Script"
@@ -117,10 +133,14 @@ fi
 
 # --- CLEANUP ---
 echo "🧹 Cleaning up..."
-rm -f "$DEPLOYMENT_ARCHIVE"
+if [ -n "$DEPLOYMENT_ARCHIVE" ]; then
+    rm -f "$DEPLOYMENT_ARCHIVE"
+fi
 rm -f /tmp/deploy.sh || true
 rm -f ~/deploy/deploy.sh || true
 rm -f "/home/$USER/deploy/deploy.sh" || true
+rm -f ~/deploy/eventhub-deployment.tar.gz || true
+rm -f "/home/$USER/deploy/eventhub-deployment.tar.gz" || true
 
 # --- KEEP ONLY LAST 5 BACKUPS ---
 if [ -d "$BACKUP_PATH" ]; then
