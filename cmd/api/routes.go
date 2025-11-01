@@ -12,7 +12,11 @@ func (app *application) routes() *gin.Engine {
 	g.Use(gin.Recovery())
 
 	// Production middleware (CORS must be first)
-	g.Use(corsMiddleware([]string{"http://localhost:3000", "https://eclipse-softworks.com"}))
+	g.Use(corsMiddleware([]string{
+		"http://localhost:3000",
+		"https://eclipse-softworks.com",
+		"https://go-api.eclipse-softworks.com",
+	}))
 	g.Use(requestIDMiddleware())
 	g.Use(requestLoggerMiddleware())
 	g.Use(securityHeadersMiddleware())
