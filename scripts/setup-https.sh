@@ -45,13 +45,23 @@ fi
 
 echo "📝 Creating nginx configuration..."
 
+# Detect config directory
+if [ -d /etc/nginx/sites-available ]; then
+    NGINX_CONF_DIR="/etc/nginx/sites-available"
+    NGINX_CONF_FILE="$NGINX_CONF_DIR/eventhub"
+else
+    # Amazon Linux / RHEL uses conf.d
+    NGINX_CONF_DIR="/etc/nginx/conf.d"
+    NGINX_CONF_FILE="$NGINX_CONF_DIR/eventhub.conf"
+fi
+
 # Backup existing config if present
-if [ -f /etc/nginx/sites-available/eventhub ]; then
-    cp /etc/nginx/sites-available/eventhub /etc/nginx/sites-available/eventhub.backup.$(date +%s)
+if [ -f "$NGINX_CONF_FILE" ]; then
+    cp "$NGINX_CONF_FILE" "$NGINX_CONF_FILE.backup.$(date +%s)"
 fi
 
 # Create nginx config
-cat > /etc/nginx/sites-available/eventhub <<EOF
+cat > "$NGINX_CONF_FILE" <<EOF
 server {
     listen 80;
     listen [::]:80;
@@ -101,12 +111,12 @@ server {
 # }
 EOF
 
-# Enable site (Ubuntu/Debian pattern; adjust for RHEL if needed)
-if [ -d /etc/nginx/sites-enabled ]; then
-    ln -sf /etc/nginx/sites-available/eventhub /etc/nginx/sites-enabled/
+# Enable site (Ubuntu/Debian uses sites-enabled, Amazon Linux/RHEL uses conf.d directly)
+if [ -d /etc/nginx/sites-enabled ] && [ "$NGINX_CONF_DIR" = "/etc/nginx/sites-available" ]; then
+    ln -sf "$NGINX_CONF_FILE" /etc/nginx/sites-enabled/
+    echo "✅ Enabled site via sites-enabled"
 else
-    # On RHEL/Amazon Linux, include directly in nginx.conf or conf.d
-    cp /etc/nginx/sites-available/eventhub /etc/nginx/conf.d/eventhub.conf
+    echo "✅ Configuration created in conf.d (no symlink needed)"
 fi
 
 # Test nginx config

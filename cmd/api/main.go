@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"os"
 	"rest-api-in-gin/internal/database"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/sqlite3"
+	"github.com/golang-migrate/migrate/v4/source"
 	"github.com/golang-migrate/migrate/v4/source/file"
 )
 
@@ -117,9 +119,24 @@ func runMigrationsIfNeeded(db *sql.DB) error {
 		return err
 	}
 
-	fSrc, err := (&file.File{}).Open("cmd/migrate/migrations")
-	if err != nil {
-		return err
+	// Try multiple possible migration paths
+	migrationPaths := []string{
+		"cmd/migrate/migrations", // development path
+		"migrate/migrations",      // deployed path
+		"./migrations",            // fallback path
+	}
+
+	var fSrc source.Driver
+	var lastErr error
+	for _, path := range migrationPaths {
+		fSrc, lastErr = (&file.File{}).Open(path)
+		if lastErr == nil {
+			log.Printf("Using migration path: %s", path)
+			break
+		}
+	}
+	if lastErr != nil {
+		return fmt.Errorf("could not find migrations directory (tried: %v): %w", migrationPaths, lastErr)
 	}
 
 	m, err := migrate.NewWithInstance(
