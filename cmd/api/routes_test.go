@@ -48,10 +48,10 @@ func setupAppWithTempDB(t *testing.T) (*application, func()) {
 	createEvents := `CREATE TABLE IF NOT EXISTS events (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		user_id INTEGER NOT NULL,
-		name TEXT NOT NULL,
+		title TEXT NOT NULL,
 		description TEXT,
-		date DATETIME NOT NULL,
-		location TEXT NOT NULL,
+		start_time DATETIME NOT NULL,
+		end_time DATETIME NOT NULL,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -169,10 +169,10 @@ func TestProtectedRoutes(t *testing.T) {
 
 	// create event as owner
 	evBody := map[string]interface{}{
-		"name":        "Test Event",
+		"title":       "Test Event",
 		"description": "This is a test event for protected routes",
-		"date":        "2025-12-01T12:00:00Z",
-		"location":    "Test Hall",
+		"start_time":  "2025-12-01T12:00:00Z",
+		"end_time":    "2025-12-01T14:00:00Z",
 	}
 	b, _ := json.Marshal(evBody)
 	req, _ := http.NewRequest("POST", ts.URL+"/api/v1/events", bytes.NewReader(b))
@@ -305,7 +305,7 @@ func TestProtectedErrorCases(t *testing.T) {
 	defer ts.Close()
 
 	// 1) Invalid token -> expect 401 on protected POST
-	evBody := map[string]interface{}{"name": "Event for Errors", "description": "A sufficiently long description.", "date": "2025-12-01T12:00:00Z", "location": "Test Venue"}
+	evBody := map[string]interface{}{"title": "Event for Errors", "description": "A sufficiently long description.", "start_time": "2025-12-01T12:00:00Z", "end_time": "2025-12-01T14:00:00Z"}
 	b, _ := json.Marshal(evBody)
 	req, _ := http.NewRequest("POST", ts.URL+"/api/v1/events", bytes.NewReader(b))
 	req.Header.Set("Content-Type", "application/json")
