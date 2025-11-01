@@ -14,26 +14,26 @@ EventHub is a production-ready RESTful API server implemented in Go using the Gi
 
 ### Key Features
 
-✅ **Production-Ready Security**
+**Production-Ready Security**
 - JWT-based authentication
 - Rate limiting (100 requests/min per IP)
 - CORS protection
 - Security headers (XSS, CSRF, CSP)
 - Request ID tracking for distributed tracing
 
-✅ **Observability**
+**Observability**
 - Health check endpoint
 - Version information endpoint
 - Structured request logging
 - Database connection monitoring
 
-✅ **Performance**
+**Performance**
 - Database connection pooling
 - Graceful shutdown
 - Optimized timeouts
 - Static asset serving
 
-✅ **Developer Experience**
+**Developer Experience**
 - Auto-generated Swagger/OpenAPI documentation
 - Comprehensive test coverage
 - Database migrations
@@ -100,7 +100,7 @@ JWT_Secret=your-super-secure-secret-key-min-32-chars
 BASE_URL=http://localhost:8080
 ```
 
-⚠️ **Security Warning**: Never use default secrets in production!
+**Security Warning**: Never use default secrets in production!
 
 ### 3. Run Migrations
 
@@ -118,10 +118,10 @@ go run .
 ```
 
 The server will start with:
-- 🚀 API: `http://localhost:8080/api/v1`
-- 📊 Health: `http://localhost:8080/health`
-- 📚 Docs: `http://localhost:8080/docs`
-- ℹ️ Version: `http://localhost:8080/version`
+- API: `http://localhost:8080/api/v1`
+- Health: `http://localhost:8080/health`
+- Docs: `http://localhost:8080/docs`
+- ℹVersion: `http://localhost:8080/version`
 
 ---
 

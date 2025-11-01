@@ -13,19 +13,19 @@ import (
 
 func (app *application) server() error {
 	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%d", app.port),
-		Handler:      app.routes(),
-		IdleTimeout:  time.Minute,
-		ReadTimeout:  time.Second * 10,
-		WriteTimeout: time.Second * 30,
+		Addr:           fmt.Sprintf(":%d", app.port),
+		Handler:        app.routes(),
+		IdleTimeout:    time.Minute,
+		ReadTimeout:    time.Second * 10,
+		WriteTimeout:   time.Second * 30,
 		MaxHeaderBytes: 1 << 20, // 1 MB
 	}
 
 	log.Printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-	log.Printf("🚀 EventHub API by Eclipse Softworks")
-	log.Printf("📍 Server starting on port %d", app.port)
-	log.Printf("📊 Health: http://localhost:%d/health", app.port)
-	log.Printf("📚 Docs: http://localhost:%d/docs", app.port)
+	log.Printf("EventHub API by Eclipse Softworks")
+	log.Printf("Server starting on port %d", app.port)
+	log.Printf("Health: http://localhost:%d/health", app.port)
+	log.Printf("Docs: http://localhost:%d/docs", app.port)
 	log.Printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
 	// Channel to listen for errors coming from the listener.
@@ -46,8 +46,8 @@ func (app *application) server() error {
 		return fmt.Errorf("server error: %w", err)
 
 	case sig := <-shutdown:
-		log.Printf("\n🛑 Shutdown signal received: %v", sig)
-		log.Println("⏳ Gracefully shutting down...")
+		log.Printf("\nShutdown signal received: %v", sig)
+		log.Println("Gracefully shutting down...")
 
 		// Give outstanding requests 30 seconds to complete
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -58,7 +58,7 @@ func (app *application) server() error {
 			srv.Close()
 			return fmt.Errorf("could not stop server gracefully: %w", err)
 		}
-		log.Println("✅ Server stopped gracefully")
+		log.Println("Server stopped gracefully")
 	}
 
 	return nil

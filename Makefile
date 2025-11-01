@@ -17,10 +17,10 @@ help: ## Show this help message
 build: ## Build the application binary
 	@echo "🔨 Building $(APP_NAME)..."
 	@go build -ldflags="$(LDFLAGS)" -o bin/$(APP_NAME) ./cmd/api
-	@echo "✅ Build complete: bin/$(APP_NAME)"
+	@echo "Build complete: bin/$(APP_NAME)"
 
 run: ## Run the application
-	@echo "🚀 Starting $(APP_NAME)..."
+	@echo "Starting $(APP_NAME)..."
 	@cd cmd/api && go run .
 
 dev: ## Run with hot reload (requires air)
@@ -32,24 +32,24 @@ test: ## Run all tests
 	@go test ./... -v -race -coverprofile=coverage.out
 
 test-coverage: test ## Run tests and show coverage report
-	@echo "📊 Generating coverage report..."
+	@echo "Generating coverage report..."
 	@go tool cover -html=coverage.out -o coverage.html
-	@echo "✅ Coverage report: coverage.html"
+	@echo "Coverage report: coverage.html"
 
 migrate: ## Run database migrations
 	@echo "🗄️  Running migrations..."
 	@cd cmd/migrate && go run .
-	@echo "✅ Migrations complete"
+	@echo "Migrations complete"
 
 migrate-force: ## Force run database migrations
 	@echo "🗄️  Force running migrations..."
 	@FORCE_MIGRATE=1 cd cmd/migrate && go run .
-	@echo "✅ Migrations complete"
+	@echo "Migrations complete"
 
 swagger: ## Generate Swagger documentation
-	@echo "📚 Generating Swagger docs..."
+	@echo "Generating Swagger docs..."
 	@swag init -g cmd/api/main.go -o cmd/api/docs --parseDependency --parseInternal
-	@echo "✅ Swagger docs generated"
+	@echo "Swagger docs generated"
 
 lint: ## Run linter
 	@echo "🔍 Running linter..."
@@ -58,17 +58,17 @@ lint: ## Run linter
 fmt: ## Format code
 	@echo "✨ Formatting code..."
 	@go fmt ./...
-	@echo "✅ Code formatted"
+	@echo "Code formatted"
 
 vet: ## Run go vet
 	@echo "🔍 Running go vet..."
 	@go vet ./...
-	@echo "✅ Vet complete"
+	@echo "Vet complete"
 
 clean: ## Clean build artifacts
 	@echo "🧹 Cleaning..."
 	@rm -rf bin/ coverage.out coverage.html tmp/
-	@echo "✅ Clean complete"
+	@echo "Clean complete"
 
 docker-build: ## Build Docker image
 	@echo "🐳 Building Docker image..."
@@ -79,7 +79,7 @@ docker-build: ## Build Docker image
 		-t $(APP_NAME):$(VERSION) \
 		-t $(APP_NAME):latest \
 		.
-	@echo "✅ Docker image built: $(APP_NAME):$(VERSION)"
+	@echo "Docker image built: $(APP_NAME):$(VERSION)"
 
 docker-run: ## Run Docker container
 	@echo "🐳 Running Docker container..."
@@ -88,26 +88,26 @@ docker-run: ## Run Docker container
 		--name $(APP_NAME) \
 		-v $$(pwd)/data:/app/data \
 		$(APP_NAME):latest
-	@echo "✅ Container started: http://localhost:8080"
+	@echo "Container started: http://localhost:8080"
 
 docker-stop: ## Stop Docker container
-	@echo "🛑 Stopping Docker container..."
+	@echo "Stopping Docker container..."
 	@docker stop $(APP_NAME) || true
 	@docker rm $(APP_NAME) || true
-	@echo "✅ Container stopped"
+	@echo "Container stopped"
 
 docker-logs: ## Show Docker container logs
 	@docker logs -f $(APP_NAME)
 
 compose-up: ## Start services with docker-compose
-	@echo "🚀 Starting services with docker-compose..."
+	@echo "Starting services with docker-compose..."
 	@docker-compose up -d
-	@echo "✅ Services started"
+	@echo "Services started"
 
 compose-down: ## Stop services with docker-compose
-	@echo "🛑 Stopping services..."
+	@echo "Stopping services..."
 	@docker-compose down
-	@echo "✅ Services stopped"
+	@echo "Services stopped"
 
 compose-logs: ## Show docker-compose logs
 	@docker-compose logs -f
@@ -116,12 +116,12 @@ install-tools: ## Install development tools
 	@echo "📦 Installing development tools..."
 	@go install github.com/swaggo/swag/cmd/swag@v1.8.12
 	@go install github.com/cosmtrek/air@latest
-	@echo "✅ Tools installed"
+	@echo "Tools installed"
 
 mod-tidy: ## Tidy go modules
 	@echo "📦 Tidying modules..."
 	@go mod tidy
-	@echo "✅ Modules tidied"
+	@echo "Modules tidied"
 
 security-check: ## Run security checks (requires gosec)
 	@echo "🔒 Running security checks..."

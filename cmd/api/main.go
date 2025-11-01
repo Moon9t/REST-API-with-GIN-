@@ -122,8 +122,8 @@ func runMigrationsIfNeeded(db *sql.DB) error {
 	// Try multiple possible migration paths
 	migrationPaths := []string{
 		"cmd/migrate/migrations", // development path
-		"migrate/migrations",      // deployed path
-		"./migrations",            // fallback path
+		"migrate/migrations",     // deployed path
+		"./migrations",           // fallback path
 	}
 
 	var fSrc source.Driver
