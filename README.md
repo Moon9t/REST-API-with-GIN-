@@ -10,11 +10,11 @@ Powered by [Eclipse Softworks](https://eclipse-softworks.com)
 
 ## Overview
 
-EventHub is a production-ready RESTful API server implemented in Go using the Gin framework. It provides comprehensive endpoints to manage users, events, and attendees with enterprise-grade security, monitoring, and performance features.
+EventHub is a RESTful API server implemented in Go using the Gin framework. It provides endpoints to manage users, events, and attendees with security, monitoring, and performance features.
 
 ### Key Features
 
-**Production-Ready Security**
+**Security**
 - JWT-based authentication
 - Rate limiting (100 requests/min per IP)
 - CORS protection
